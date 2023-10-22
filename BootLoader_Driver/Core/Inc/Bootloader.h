@@ -15,10 +15,12 @@
 #include "crc.h"
 
 /*==================== Macro Declerations  ===========================*/
+/* The configurations of BL using */
 #define BL_DEBUG_UART                           &huart2
 #define BL_HOST_COMMUNICATION_UART              &huart2
 #define CRC_ENGINE_OBJ                          &hcrc
 
+/* Enable debugging messages to be sent to check the status of BL */
 #define DEBUG_INFO_ENABLE                       0x01
 #define DEBUG_INFO_DISABLE                      0x00
 #define BL_DEBUG_ENABLE                         DEBUG_INFO_ENABLE
@@ -45,7 +47,7 @@
 #define CBL_MEM_READ_CMD                        0x18 /* AMemory contents of length asked by the host (N bytes) This commend is used to read data from different memories of the MCU */
 #define CBL_READ_SECTOR_STATUS_CMD              0x19 /* All sectors status, This commend is used to read all the sector protection status (2 bytes) */
 #define CBL_OTP_READ_CMD                        0x20
-#define CBL_DIS_R_W_PROTECT_CMD                 0x21
+#define CBL_CHANGE_ROP_Level_CMD                0x21
 
 /* That is the versions of your code and vendor id's */
 #define CBL_VENDOR_ID                           100
@@ -60,15 +62,45 @@
 #define CBL_SEND_ACK                            0xAB
 #define CBL_SEND_NACK                           0xCD
 
+/* the address of application region */
 #define FLASH_SECTOR2_BASE_ADDRESS              0x8008000U
 
+/* To check that the given address is within range */
 #define ADDRESS_IS_VALID                        1
 #define ADDRESS_IS_INVALID                      0
 
+/* The sizes of memory */
 #define STM32F103_SRAM_SIZE                     (20*1024)
-#define STM32F103_FLASH_SIZE                    (64*1024)
+#define STM32F103_FLASH_SIZE                    (128*1024) /* 128 pages */
 #define STM32F103_SRAM_END                      (SRAM_BASE+STM32F103_SRAM_SIZE)
 #define STM32F103_FLASH_END                     (FLASH_BASE+STM32F103_FLASH_SIZE)
+#define STM32F103_FLASH_PAGE_SIZE               0x400 /* 1K */
+
+/* Related to pages in flash memory */
+#define CBL_FLASH_MAX_PAGES_NUMBER              128
+#define CBL_PAGE_END                            14
+
+/* The status of Erasing flash memory */
+#define SUCESSFUL_ERASE                         0x03
+#define UNSUCESSFUL_ERASE                       0x02
+#define PAGE_VALID_NUMBER                       0x01
+#define PAGE_INVALID_NUMBER                     0x00
+#define HAL_SUCESSFUL_ERASE                     0xFFFFFFFF
+
+/* Erase all sectors in application region */
+#define CBL_FLASH_MASS_ERASE                    0xFF
+
+/* Defines writing in memory status */
+#define FLASH_PAYLOAD_WRITING_FAILED            0x00
+#define FLASH_PAYLOAD_WRITING_PASSED            0x01
+
+/* definations related to read protection level */
+#define RDP_LEVEL_READ_INVALID                  0x00
+#define RDP_LEVEL_READ_VALID                    0x01
+
+/* Change read protection level */
+#define ROP_LEVEL_CHANGE_INVALID                0x00
+#define ROP_LEVEL_CHANGE_VALID                  0x01
 
 /*==================== Data Types Declerations  ===========================*/
 typedef enum {

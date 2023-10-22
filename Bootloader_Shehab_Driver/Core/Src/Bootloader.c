@@ -15,18 +15,19 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer);
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer);
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer);
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer);
-static void Bootloader_Enable_RW_Protection (uint8_t *Host_Buffer);
-static void Bootloader_Memory_Read (uint8_t *Host_Buffer);
-static void Bootloader_Get_Sector_Protection_Status (uint8_t *Host_Buffer);
-static void Bootloader_Read_OTP (uint8_t *Host_Buffer);
-static void Bootloader_Disable_RW_Protection (uint8_t *Host_Buffer);
+static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer);
 
 static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint32_t Host_CRC);
 static void Bootloader_Send_ACK (uint8_t Reply_Length);
 static void Bootloader_Send_NACK();
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len);
 static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer);
+static void CBL_STM32F103_GET_RDP_Level (uint8_t *RDP_Level);
+
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
+static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages);
+static uint8_t Flash_Memory_Write_Payload (uint8_t *Host_PayLoad , uint32_t Payload_Start_Address,uint16_t Payload_Len);
+static uint8_t Change_ROP_Level(uint8_t ROP_Level);
 
 /*===================Static global Variables Definations  ==================*/
 static uint8_t BL_HostBuffer[BL_HOST_BUFFER_RX_LENGTH];
@@ -44,7 +45,7 @@ static uint8_t Bootloader_Supported_CMDs[12] = {
 	CBL_MEM_READ_CMD,
 	CBL_READ_SECTOR_STATUS_CMD,
 	CBL_OTP_READ_CMD,
-	CBL_DIS_R_W_PROTECT_CMD,
+	CBL_CHANGE_ROP_Level_CMD
 };
 
 /*======================== Software Interface Definations  ====================*/
@@ -107,7 +108,6 @@ BL_Status BL_UART_Fetch_Host_Commend(void) {
 					Status = BL_OK ;
 					break;
 				case CBL_GET_RDP_STATUS_CMD :
-					BL_PrintMassage ("CBL_GET_RDP_STATUS_CMD \r\n ");
 					Bootloader_Read_Protection_Level(BL_HostBuffer);
 					Status = BL_OK ;
 					break;
@@ -116,43 +116,19 @@ BL_Status BL_UART_Fetch_Host_Commend(void) {
 					Status = BL_OK ;
 					break;
 				case CBL_FLASH_ERASE_CMD :
-					BL_PrintMassage ("CBL_FLASH_ERASE_CMD \r\n ");
 					Bootloader_Erase_Flash(BL_HostBuffer);
 					Status = BL_OK ;
 					break;
 				case CBL_MEM_WRITE_CMD :
-					BL_PrintMassage ("CBL_MEM_WRITE_CMD \r\n ");
 					Bootloader_Memory_Write(BL_HostBuffer);
 					Status = BL_OK ;
 					break;
-				case CBL_EN_R_W_PROTECT_CMD :
-					BL_PrintMassage ("CBL_EN_R_W_PROTECT_CMD \r\n ");
-					Bootloader_Enable_RW_Protection(BL_HostBuffer);
-					Status = BL_OK ;
-					break;
-				case CBL_MEM_READ_CMD :
-					BL_PrintMassage ("CBL_MEM_READ_CMD \r\n ");
-					Bootloader_Memory_Read(BL_HostBuffer);
-					Status = BL_OK ;
-					break;
-				case CBL_READ_SECTOR_STATUS_CMD :
-					BL_PrintMassage ("CBL_READ_SECTOR_STATUS_CMD \r\n ");
-					Bootloader_Get_Sector_Protection_Status(BL_HostBuffer);
-					Status = BL_OK ;
-					break;
-				case CBL_OTP_READ_CMD :
-					BL_PrintMassage ("CBL_OTP_READ_CMD \r\n ");
-					Bootloader_Read_OTP(BL_HostBuffer);
-					Status = BL_OK ;
-					break;
-				case CBL_DIS_R_W_PROTECT_CMD :
-					BL_PrintMassage ("CBL_DIS_R_W_PROTECT_CMD \r\n ");
-					Bootloader_Disable_RW_Protection(BL_HostBuffer);
+				case CBL_CHANGE_ROP_Level_CMD :
+					Bootloader_Change_Read_Protection_Level(BL_HostBuffer);
 					Status = BL_OK ;
 					break;
 				default :
 					BL_PrintMassage ("Invalid commend code recieved from host !! \r\n ");
-					Bootloader_Get_Help(BL_HostBuffer);
 					Status = BL_NACK ;
 					break;
 			}
@@ -247,6 +223,7 @@ static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 		Bootloader_Send_NACK();
 	}
 }
+
 static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 	uint16_t Host_CMD_Packet_Len = 0 ;  /* used to define the beginning of CRC address in buffer */
 	uint32_t Host_CRC32 = 0 ;           /* Used to get CRC data */
@@ -269,7 +246,7 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 		/* Sending the list of commends to meet the target from commend */
 		Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,12);
 
-		Bootloader_Jump_To_User_App(Host_Buffer);
+		Bootloader_Jump_To_User_App(Host_Buffer); /////////////////////////////////////
 	}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -278,6 +255,7 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 		Bootloader_Send_NACK();
 	}
 }
+
 static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
@@ -313,8 +291,50 @@ static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 		Bootloader_Send_NACK();
 	}
 }
-static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 
+static void CBL_STM32F103_GET_RDP_Level (uint8_t *RDP_Level){
+	/* paramter input for function that get level of memory */
+	FLASH_OBProgramInitTypeDef FLASH_OBProgram ;
+	/* Get level of memory */
+	HAL_FLASHEx_OBGetConfig(&FLASH_OBProgram);
+	/* Assign protection level in parameter [in\out] */
+	*RDP_Level = (uint8_t)FLASH_OBProgram.RDPLevel ;
+}
+
+static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
+	/* used to define the beginning of CRC address in buffer */
+	uint16_t Host_CMD_Packet_Len = 0 ;
+	/* Used to get CRC data */
+	uint32_t Host_CRC32 = 0 ;
+	/* Level of protection */
+	uint8_t RDP_Level = 0 ;
+
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("Read the flash protection out level \r\n ");
+#endif
+
+	/* Extract the CRC32 and Packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+
+	/* CRC Verfications */
+	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is passed\r\n");
+#endif
+		/* Report acknowledge message*/
+		Bootloader_Send_ACK(1);
+		/* Read protection level */
+		CBL_STM32F103_GET_RDP_Level(&RDP_Level);
+		/* Report level */
+		Bootloader_Send_Data_To_Host((uint8_t *)(&RDP_Level),1);
+	}
+	else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is failed\r\n");
+#endif
+		Bootloader_Send_NACK();
+	}
 }
 
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address){
@@ -407,26 +427,338 @@ static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
 	ResetHandler_Address();
 }
 
+static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages){
+	/* To check that the sectors in not overflow the size of flash */
+	uint8_t Page_validity_Status  = PAGE_INVALID_NUMBER ;
+	/* Status of erasing flash */
+	HAL_StatusTypeDef HAL_Status = HAL_ERROR ;
+	/* Error sector status */
+	uint32_t PageError = 0 ;
+	/* Define struct to configure parameters[in] */
+	FLASH_EraseInitTypeDef pEraseInit ;
+	/* Define the used bank in flash memory */
+	pEraseInit.Banks = FLASH_BANK_1 ;
+
+	/* trying to erase bootloader --> PAGE_INVALID_NUMBER */
+	if (Page_Number <= CBL_PAGE_END){
+		Page_validity_Status = PAGE_INVALID_NUMBER ;
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("It will erase in bootloader code \r\n ");
+#endif
+	}
+	/* another pages is agreed but check that is acess the number of pages in flash */
+	else if (((Page_Number + Number_Of_Pages) > CBL_FLASH_MAX_PAGES_NUMBER)
+			&& CBL_FLASH_MASS_ERASE != Page_Number) {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("It is over the flash size\r\n ");
+#endif
+	Page_validity_Status = PAGE_INVALID_NUMBER ;
+	}
+	/* erase all memory or specific page */
+	else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("It is in range \r\n ");
+#endif
+		Page_validity_Status = PAGE_VALID_NUMBER ;
+		/* Check if he want to erase all memory flash */
+		if ( CBL_FLASH_MASS_ERASE == Page_Number  ){
+			pEraseInit.TypeErase = FLASH_TYPEERASE_MASSERASE ;
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("Mase erase \r\n ");
+#endif
+		}
+		/* erase specific page */
+		else {
+			pEraseInit.TypeErase   = FLASH_TYPEERASE_PAGES ;
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("Page erase \r\n ");
+#endif
+			pEraseInit.PageAddress = ((uint32_t) Page_Number
+					* (STM32F103_FLASH_PAGE_SIZE) + FLASH_BASE);
+			pEraseInit.NbPages     = Number_Of_Pages ;
+		}
+		/* To unlock flash memory */
+		HAL_Status = HAL_FLASH_Unlock();
+		/* if it's opened correctly */
+		if (HAL_Status == HAL_OK){
+			/* Perform a mass erase or erase the specified FLASH memory sectors */
+			HAL_Status = HAL_FLASHEx_Erase(&pEraseInit, &PageError);
+			/* To check that the flash memory is erased sucessfully */
+			if (HAL_SUCESSFUL_ERASE == PageError){
+				Page_validity_Status = SUCESSFUL_ERASE ;
+			}
+			/* didn't erase*/
+			else {
+				Page_validity_Status = UNSUCESSFUL_ERASE ;
+			}
+		}
+		/* Not opened */
+		else {
+			Page_validity_Status = UNSUCESSFUL_ERASE ;
+		}
+		/* if it erased correctly and opened correctly */
+		if (Page_validity_Status == SUCESSFUL_ERASE && HAL_Status == HAL_OK ){
+			/* To lock flash memory */
+			HAL_Status = HAL_FLASH_Lock();
+		}
+		/* not erased or opened */
+		else {
+			Page_validity_Status  = PAGE_INVALID_NUMBER ;
+		}
+	}
+
+	return Page_validity_Status ;
+}
+
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
+	/* used to define the beginning of CRC address in buffer */
+	uint16_t Host_CMD_Packet_Len = 0 ;
+	/* Used to get CRC data */
+	uint32_t Host_CRC32 = 0 ;
+	/* To check on Erase state */
+	uint8_t Erase_Status = UNSUCESSFUL_ERASE ;
 
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("Mase erase or sector erase of the user flash \r\n ");
+#endif
+
+	/* Extract the CRC32 and Packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+
+	/* CRC Verfications */
+	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is passed\r\n");
+#endif
+		/* Send acknowledge to host */
+		Bootloader_Send_ACK(1);
+		/* Perform Mass erase or sector erase of the yser flash */
+		Erase_Status = Perform_Flash_Erase (Host_Buffer[2],Host_Buffer[3]);
+		if ( SUCESSFUL_ERASE == Erase_Status){
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Sucessful erased\r\n");
+#endif
+		}
+		else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Unsucessful erased\r\n");
+#endif
+		}
+		/* Report the erase state */
+		Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
+	}
+	else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is failed\r\n");
+#endif
+		Bootloader_Send_NACK();
+	}
 }
+
+static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
+		uint32_t Payload_Start_Address, uint16_t Payload_Len) {
+	/* The status in dealing HAL functions */
+	HAL_StatusTypeDef HAL_Status = HAL_ERROR;
+	/* Status writing in flash memory */
+	uint8_t Status = FLASH_PAYLOAD_WRITING_FAILED;
+	/* The number of words in data appliction sections */
+	uint16_t PayLoad_Counter = 0;
+	/* Writing steps */
+	/* Open flash memory */
+	HAL_Status = HAL_FLASH_Unlock();
+	/* If it opened */
+	if (HAL_Status == HAL_OK) {
+		/* Transfer the data sections word by word */
+		for (PayLoad_Counter = 0; PayLoad_Counter < Payload_Len;
+				PayLoad_Counter += 4) {
+			HAL_Status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
+					Payload_Start_Address + PayLoad_Counter,
+					Host_PayLoad[PayLoad_Counter]);
+			/* if function can't write on memory Status be failed */
+			if (HAL_Status != HAL_OK) {
+				Status = FLASH_PAYLOAD_WRITING_FAILED;
+				break;
+			} else {
+				/* All iterations, It can write on memory make status passed */
+				Status = FLASH_PAYLOAD_WRITING_PASSED;
+			}
+		}
+	} else {
+		/* If it can't open memory make status failed */
+		Status = FLASH_PAYLOAD_WRITING_FAILED;
+	}
+	/* If all status is OK so It will lock memory */
+	if (Status == FLASH_PAYLOAD_WRITING_PASSED && HAL_Status == HAL_OK) {
+		HAL_Status = HAL_FLASH_Lock();
+		/* Check if it locked it true or not */
+		if (HAL_Status != HAL_OK) {
+			Status = FLASH_PAYLOAD_WRITING_FAILED;
+		} else {
+			Status = FLASH_PAYLOAD_WRITING_PASSED;
+		}
+	} else {
+		/* If one of status is not OK so It will make returned status with failed */
+		Status = FLASH_PAYLOAD_WRITING_FAILED;
+	}
+	return Status;
+}
+
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
+	/* used to define the beginning of CRC address in buffer */
+	uint16_t Host_CMD_Packet_Len = 0 ;
+	/* Used to get CRC data */
+	uint32_t Host_CRC32 = 0 ;
+	/* Base address that you will write on */
+	uint32_t Host_Address = 0 ;
+	/* Number of bytes that will be sent */
+	uint8_t PayLoad_Len = 0 ;
+	/* The status of input address from the host */
+	uint8_t Address_Verfication = ADDRESS_IS_INVALID ;
+	/* Status writing in flash memory */
+	uint8_t Status = FLASH_PAYLOAD_WRITING_FAILED ;
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("Write data into different memory ");
+#endif
 
+	/* Extract the CRC32 and Packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+
+	/* CRC Verfications */
+	if (CRC_OK == Bootloader_CRC_Verify(Host_Buffer,(Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)) {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is passed\r\n");
+#endif
+		/* Send acknowledge to host */
+		Bootloader_Send_ACK(1);
+		/* Read Base address */
+		Host_Address = *((uint32_t *)(&Host_Buffer[2])) ;
+		/* Extract the size of new data in memory */
+		PayLoad_Len = Host_Buffer[6] ;
+		/* Verify the given address */
+		Address_Verfication = Host_Jump_Address_Verfication(Host_Address);
+		if (Address_Verfication == ADDRESS_IS_VALID){
+			/* Write on memory */
+			Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[7], Host_Address, PayLoad_Len);
+			/* Report the writing state */
+			Bootloader_Send_Data_To_Host((uint8_t *)(&Status),1);
+		}
+		else {
+			/* Nothing */
+		}
+		/* Report the address selection state */
+		Bootloader_Send_Data_To_Host((uint8_t *)(&Address_Verfication),1);
+	}
+	else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is failed\r\n");
+#endif
+		Bootloader_Send_NACK();
+	}
 }
-static void Bootloader_Enable_RW_Protection (uint8_t *Host_Buffer){
 
+static uint8_t Change_ROP_Level(uint8_t ROP_Level){
+	/* Status of function calling */
+	HAL_StatusTypeDef HAL_Status = HAL_ERROR ;
+	/* Parameter[in] of function that configure level of protection */
+	FLASH_OBProgramInitTypeDef FLASH_OBProgmInit;
+	/* Status of this function */
+	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+
+	/* open flash option control registers acess */
+	HAL_Status = HAL_FLASH_OB_Unlock();
+	/* check if it is not opened correctly */
+	if (HAL_Status != HAL_OK){
+		ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+	}
+	else {
+		/* Initialize configurations of parameter[in] for configure level of protection */
+		FLASH_OBProgmInit.OptionType = OPTIONBYTE_RDP ; /*!<RDP option byte configuration*/
+		FLASH_OBProgmInit.Banks      = FLASH_BANK_1 ;
+		FLASH_OBProgmInit.RDPLevel   = (uint32_t)ROP_Level ;
+		/* Program option bytes */
+		HAL_Status = HAL_FLASHEx_OBProgram(&FLASH_OBProgmInit);
+		/* Check that it was failed */
+		if (HAL_Status != HAL_OK){
+			/* Locking the flash option control registers access */
+			HAL_Status = HAL_FLASH_OB_Lock();
+			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+		}
+		else {
+			/* Launch the option byte loading */
+			HAL_FLASH_OB_Launch();
+			/* Locking the flash option control registers access */
+			HAL_Status = HAL_FLASH_OB_Lock();
+			/* Check that it was failed */
+			if (HAL_Status != HAL_OK){
+				ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+			}
+			else {
+				/* Locking the flash option control registers access */
+				ROP_Level_Status = ROP_LEVEL_CHANGE_VALID;
+			}
+		}
+	}
+	return ROP_Level_Status ;
 }
-static void Bootloader_Memory_Read (uint8_t *Host_Buffer){
 
-}
-static void Bootloader_Get_Sector_Protection_Status (uint8_t *Host_Buffer){
+static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
+	/* used to define the beginning of CRC address in buffer */
+	uint16_t Host_CMD_Packet_Len = 0 ;
+	/* Used to get CRC data */
+	uint32_t Host_CRC32 = 0 ;
+	/* Status of this function */
+	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+	/* read protection level */
+	 uint8_t ROP_Level = 0 ;
 
-}
-static void Bootloader_Read_OTP (uint8_t *Host_Buffer){
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	BL_PrintMassage ("Change the flash protection out level \r\n ");
+#endif
 
-}
-static void Bootloader_Disable_RW_Protection (uint8_t *Host_Buffer){
+	/* Extract the CRC32 and Packet length sent by the HOST */
+	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
+	/* CRC Verfications */
+	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is passed\r\n");
+#endif
+		/* Report acknowledge message*/
+		Bootloader_Send_ACK(1);
+		/* Assign read protection level from buffer */
+		ROP_Level = Host_Buffer[2] ;
+		/* reject operation if it was level 2 protection */
+		if (ROP_Level == 2){
+			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+		}
+		else {
+			if ( ROP_Level == 0 ){
+				/* 0xAA --> RDP_Level_0 */
+				ROP_Level = 0xAA ;
+				ROP_Level_Status = ROP_LEVEL_CHANGE_VALID ;
+			}
+			else if ( ROP_Level == 1 ) {
+				/* 0x55 --> RDP_Level_1 */
+				ROP_Level = 0x55 ;
+				ROP_Level_Status = ROP_LEVEL_CHANGE_VALID ;
+			}
+			else {
+				ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+			}
+			/* Request change the read protection level */
+			ROP_Level_Status = Change_ROP_Level( (uint8_t) ROP_Level);
+		}
+		Bootloader_Send_Data_To_Host((uint8_t *)(&ROP_Level_Status),1);
+	}
+	else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is failed\r\n");
+#endif
+		Bootloader_Send_NACK();
+	}
 }
 
 void BL_PrintMassage(char *format, ...) {
@@ -438,7 +770,7 @@ void BL_PrintMassage(char *format, ...) {
 	vsprintf(Message, format, args);
 #if  BL_DEBUG_METHOD == BL_ENABLE_UART_DEBUG_MESSAGE
 	/* Transmit the formatted data through the defined UART */
-	HAL_UART_Transmit(BL_DEBUG_UART, (uint8_t*) Message, sizeof(Message),
+	HAL_UART_Transmit(BL_DEBUG_UART, (uint8_t*) Message, (uint16_t)sizeof(Message),
 	HAL_MAX_DELAY);
 #elif  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
 	/* Transmit the formatted data through the defined CAN */

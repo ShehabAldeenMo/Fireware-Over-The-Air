@@ -57,7 +57,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-char Massege_1[] = "Shehab  %d \r\n";
+
 /* USER CODE END 0 */
 
 /**
@@ -90,9 +90,7 @@ int main(void)
   MX_GPIO_Init();
   MX_CRC_Init();
   MX_USART2_UART_Init();
-  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -102,7 +100,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	BL_UART_Fetch_Host_Commend();
+	  BL_UART_Fetch_Host_Commend();
   }
   /* USER CODE END 3 */
 }
