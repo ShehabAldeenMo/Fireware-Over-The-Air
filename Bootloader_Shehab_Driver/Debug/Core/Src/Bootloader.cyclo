@@ -12,9 +12,9 @@
 ../Core/Src/Bootloader.c:401:13:Bootloader_Jump_To_Address	2
 ../Core/Src/Bootloader.c:469:13:Bootloader_Jump_To_User_App	1
 ../Core/Src/Bootloader.c:493:16:Perform_Flash_Erase	9
-../Core/Src/Bootloader.c:576:13:Bootloader_Erase_Flash	2
-../Core/Src/Bootloader.c:622:16:Flash_Memory_Write_Payload	7
-../Core/Src/Bootloader.c:670:13:Bootloader_Memory_Write	2
-../Core/Src/Bootloader.c:724:16:Change_ROP_Level	4
-../Core/Src/Bootloader.c:769:13:Bootloader_Change_Read_Protection_Level	4
-../Core/Src/Bootloader.c:827:6:BL_PrintMassage	1
+../Core/Src/Bootloader.c:584:13:Bootloader_Erase_Flash	2
+../Core/Src/Bootloader.c:630:16:Flash_Memory_Write_Payload	7
+../Core/Src/Bootloader.c:687:13:Bootloader_Memory_Write	2
+../Core/Src/Bootloader.c:744:16:Change_ROP_Level	4
+../Core/Src/Bootloader.c:795:13:Bootloader_Change_Read_Protection_Level	5
+../Core/Src/Bootloader.c:862:6:BL_PrintMassage	1

@@ -503,38 +503,38 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 	pEraseInit.Banks = FLASH_BANK_1 ;
 
 	/* trying to erase bootloader --> PAGE_INVALID_NUMBER */
-	if (Page_Number <= CBL_PAGE_END){
+	if (Page_Number < CBL_PAGE_END){
 		Page_validity_Status = PAGE_INVALID_NUMBER ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("It will erase in bootloader code \r\n ");
+	BL_PrintMassage ("It will erase in bootloader code \r\n");
 #endif
 	}
 	/* another pages is agreed but check that is acess the number of pages in flash */
-	else if (((Page_Number + Number_Of_Pages) > CBL_FLASH_MAX_PAGES_NUMBER)
+	else if (((Page_Number + Number_Of_Pages) >= CBL_FLASH_MAX_PAGES_NUMBER)
 			&& CBL_FLASH_MASS_ERASE != Page_Number) {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("It is over the flash size\r\n ");
+	BL_PrintMassage ("It is over the flash size\r\n");
 #endif
 	Page_validity_Status = PAGE_INVALID_NUMBER ;
 	}
 	/* erase all memory or specific page */
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("It is in range \r\n ");
+	BL_PrintMassage ("It is in range of flash memory \r\n");
 #endif
 		Page_validity_Status = PAGE_VALID_NUMBER ;
 		/* Check if he want to erase all memory flash */
 		if ( CBL_FLASH_MASS_ERASE == Page_Number  ){
 			pEraseInit.TypeErase = FLASH_TYPEERASE_MASSERASE ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Mase erase \r\n ");
+	BL_PrintMassage ("Mase erase \r\n");
 #endif
 		}
 		/* erase specific page */
 		else {
 			pEraseInit.TypeErase   = FLASH_TYPEERASE_PAGES ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Page erase \r\n ");
+	BL_PrintMassage ("Page erase \r\n");
 #endif
 			pEraseInit.PageAddress = ((uint32_t) Page_Number
 					* (STM32F103_FLASH_PAGE_SIZE) + FLASH_BASE);
@@ -542,6 +542,7 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 		}
 		/* To unlock flash memory */
 		HAL_Status = HAL_FLASH_Unlock();
+
 		/* if it's opened correctly */
 		if (HAL_Status == HAL_OK){
 			/* Perform a mass erase or erase the specified FLASH memory sectors */
@@ -573,6 +574,13 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 	return Page_validity_Status ;
 }
 
+/* To erase specific page
+   To delay with this commend you should send :
+	1- Data length = 0x03
+	2- First byte is commend number = 0x15
+	3- Second byte is the number of page
+	4- Third Byte equals the number of pages
+	*/
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
 	//uint16_t Host_CMD_Packet_Len = 0 ;
@@ -582,7 +590,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 	uint8_t Erase_Status = UNSUCESSFUL_ERASE ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Mase erase or sector erase of the user flash \r\n ");
+	BL_PrintMassage ("Mase erase or page erase of the user flash \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
@@ -609,7 +617,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 #endif
 		}
 		/* Report the erase state */
-		Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
+		//Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
 	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -667,6 +675,15 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
 	return Status;
 }
 
+/* To write on specific byte
+   To delay with this commend you should send :
+	1- Data length = 0x07
+	2- First byte is commend number = 0x16
+	3- Wanted address = (4bytes) --> you should enter address in Realterm as this example
+	   0x0800014c --enter--> 0x4c then 0x01 then 0x00 then 0x08
+	4- Third Byte equals the number of bytes that you want to write in
+	5- Enter in fourth byte the data that you want to write
+	*/
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
 	//uint16_t Host_CMD_Packet_Len = 0 ;
@@ -681,7 +698,7 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	/* Status writing in flash memory */
 	uint8_t Status = FLASH_PAYLOAD_WRITING_FAILED ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Write data into different memory ");
+	BL_PrintMassage ("Write data into different memory \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
@@ -699,19 +716,22 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 		Host_Address = *((uint32_t *)(&Host_Buffer[2])) ;
 		/* Extract the size of new data in memory */
 		PayLoad_Len = Host_Buffer[6] ;
+
 		/* Verify the given address */
 		Address_Verfication = Host_Jump_Address_Verfication(Host_Address);
+
 		if (Address_Verfication == ADDRESS_IS_VALID){
 			/* Write on memory */
 			Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[7], Host_Address, PayLoad_Len);
 			/* Report the writing state */
-			Bootloader_Send_Data_To_Host((uint8_t *)(&Status),1);
+			//Bootloader_Send_Data_To_Host((uint8_t *)(&Status),1);
+			BL_PrintMassage ("Correct writing data into memory at %x \r\n",Host_Address);
 		}
 		else {
-			/* Nothing */
+			BL_PrintMassage ("Incorrect writing data into memory at %x \r\n",Host_Address);
 		}
 		/* Report the address selection state */
-		Bootloader_Send_Data_To_Host((uint8_t *)(&Address_Verfication),1);
+		//Bootloader_Send_Data_To_Host((uint8_t *)(&Address_Verfication),1);
 	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -766,6 +786,12 @@ static uint8_t Change_ROP_Level(uint8_t ROP_Level){
 	return ROP_Level_Status ;
 }
 
+/* To write on specific byte
+   To delay with this commend you should send :
+	1- Data length = 0x02
+	2- First byte is commend number = 0x17
+	3- Second byte to enter your level 0,1
+	*/
 static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
 	//uint16_t Host_CMD_Packet_Len = 0 ;
@@ -777,7 +803,7 @@ static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 	 uint8_t ROP_Level = 0 ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Change the flash protection out level \r\n ");
+	BL_PrintMassage ("Change the flash protection out level \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
@@ -796,6 +822,7 @@ static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 		/* reject operation if it was level 2 protection */
 		if (ROP_Level == 2){
 			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+			BL_PrintMassage ("Rejected to be in level 2\r\n");
 		}
 		else {
 			if ( ROP_Level == 0 ){
@@ -810,11 +837,19 @@ static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 			}
 			else {
 				ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
+				BL_PrintMassage ("Invalid input level\r\n");
 			}
 			/* Request change the read protection level */
 			ROP_Level_Status = Change_ROP_Level( (uint8_t) ROP_Level);
+
+			if (ROP_Level_Status == ROP_LEVEL_CHANGE_VALID){
+				BL_PrintMassage ("Sucessful changed level\r\n");
+			}
+			else {
+				BL_PrintMassage ("Unsucessful changed level\r\n");
+			}
 		}
-		Bootloader_Send_Data_To_Host((uint8_t *)(&ROP_Level_Status),1);
+		//Bootloader_Send_Data_To_Host((uint8_t *)(&ROP_Level_Status),1);
 	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE

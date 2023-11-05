@@ -79,7 +79,7 @@
 
 /* Related to pages in flash memory */
 #define CBL_FLASH_MAX_PAGES_NUMBER              128
-#define CBL_PAGE_END                            14
+#define CBL_PAGE_END                            17
 
 /* The status of Erasing flash memory */
 #define SUCESSFUL_ERASE                         0x03
