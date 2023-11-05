@@ -48,6 +48,7 @@
 #define CBL_READ_SECTOR_STATUS_CMD              0x19 /* All sectors status, This commend is used to read all the sector protection status (2 bytes) */
 #define CBL_OTP_READ_CMD                        0x20
 #define CBL_CHANGE_ROP_Level_CMD                0x21
+#define CBL_JUMP_TO_APP                         0x22
 
 /* That is the versions of your code and vendor id's */
 #define CBL_VENDOR_ID                           100
@@ -63,7 +64,7 @@
 #define CBL_SEND_NACK                           0xCD
 
 /* the address of application region */
-#define FLASH_SECTOR2_BASE_ADDRESS              0x8008000U
+#define FLASH_PAGE_BASE_ADDRESS                 0x08008000U
 
 /* To check that the given address is within range */
 #define ADDRESS_IS_VALID                        1
@@ -71,7 +72,7 @@
 
 /* The sizes of memory */
 #define STM32F103_SRAM_SIZE                     (20*1024)
-#define STM32F103_FLASH_SIZE                    (128*1024) /* 128 pages */
+#define STM32F103_FLASH_SIZE                    (64*1024) /* 128 pages */
 #define STM32F103_SRAM_END                      (SRAM_BASE+STM32F103_SRAM_SIZE)
 #define STM32F103_FLASH_END                     (FLASH_BASE+STM32F103_FLASH_SIZE)
 #define STM32F103_FLASH_PAGE_SIZE               0x400 /* 1K */

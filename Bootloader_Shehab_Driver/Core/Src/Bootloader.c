@@ -21,7 +21,7 @@ static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint3
 static void Bootloader_Send_ACK (uint8_t Reply_Length);
 static void Bootloader_Send_NACK();
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len);
-static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer);
+static void Bootloader_Jump_To_User_App ();
 static void CBL_STM32F103_GET_RDP_Level (uint8_t *RDP_Level);
 
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
@@ -33,7 +33,7 @@ static uint8_t Change_ROP_Level(uint8_t ROP_Level);
 static uint8_t BL_HostBuffer[BL_HOST_BUFFER_RX_LENGTH];
 
 /* All supported commends by bootloaders */
-static uint8_t Bootloader_Supported_CMDs[12] = {
+static uint8_t Bootloader_Supported_CMDs[13] = {
 	CBL_GET_VER_CMD ,
 	CBL_GET_HELP_CMD ,
 	CBL_GET_CID_CMD ,
@@ -45,7 +45,8 @@ static uint8_t Bootloader_Supported_CMDs[12] = {
 	CBL_MEM_READ_CMD,
 	CBL_READ_SECTOR_STATUS_CMD,
 	CBL_OTP_READ_CMD,
-	CBL_CHANGE_ROP_Level_CMD
+	CBL_CHANGE_ROP_Level_CMD,
+	CBL_JUMP_TO_APP
 };
 
 /*======================== Software Interface Definations  ====================*/
@@ -127,6 +128,10 @@ BL_Status BL_UART_Fetch_Host_Commend(void) {
 					Bootloader_Change_Read_Protection_Level(BL_HostBuffer);
 					Status = BL_OK ;
 					break;
+				case CBL_JUMP_TO_APP :
+					Bootloader_Jump_To_User_App();
+					Status = BL_OK ;
+					break;
 				default :
 					BL_PrintMassage ("Invalid commend code recieved from host !! \r\n ");
 					Status = BL_NACK ;
@@ -183,113 +188,141 @@ static void Bootloader_Send_NACK(){
 
 /* Function to communicate with host */
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len){
-	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART, Host_Buffer, Data_Len, HAL_MAX_DELAY);
+	HAL_UART_Transmit(BL_HOST_COMMUNICATION_UART,(uint8_t*) Host_Buffer,(uint16_t) Data_Len, HAL_MAX_DELAY);
 }
 
-/* To get version of bootloader to check on the leatest version */
+/* To get version of bootloader to check on the leatest version
+   To delay with this commend you should send :
+   1- Data length = 0x01
+   2- Commend number = 0x10 */
 static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 	/* Buffering the version and vendor id's in BL_Version */
 	uint8_t BL_Version[4] = { CBL_VENDOR_ID, CBL_SW_MAJOR_VERSION,
 			CBL_SW_MINOR_VERSION, CBL_SW_PATCH_VERSION };
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
-
+	//uint32_t Host_CRC32 = 0 ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Read bootloader version \r\n ");
+	BL_PrintMassage ("Read bootloader version \r\n");
 #endif
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+	//if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+/*#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Sending Acknowledge message and number of bytes which will be sent */
-		Bootloader_Send_ACK(4);
+		//Bootloader_Send_ACK(4);
 		/* Sending the version and vendor id's to meet the target from commend */
-		Bootloader_Send_Data_To_Host(BL_Version,4);
+		//Bootloader_Send_Data_To_Host(BL_Version,4);
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-		BL_PrintMassage("Bootloader Ver. %d.%d.%d\r\n",BL_Version[1],BL_Version[2],BL_Version[3]);
+		BL_PrintMassage("Bootloader Version %d.%d.%d\r\n",BL_Version[1],BL_Version[2],BL_Version[3]);
 #endif
-	}
+	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
+/* To get the help commends
+   To delay with this commend you should send :
+	1- Data length = 0x01
+	2- Commend number = 0x11 */
 static void Bootloader_Get_Help (uint8_t *Host_Buffer){
-	uint16_t Host_CMD_Packet_Len = 0 ;  /* used to define the beginning of CRC address in buffer */
-	uint32_t Host_CRC32 = 0 ;           /* Used to get CRC data */
+	//uint16_t Host_CMD_Packet_Len = 0 ;  /* used to define the beginning of CRC address in buffer */
+	//uint32_t Host_CRC32 = 0 ;           /* Used to get CRC data */
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("What are the commends supported by the bootloader --> All supported commends code \r\n ");
+	BL_PrintMassage ("All supported commends code \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+	/*if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Sending Acknowledge message and number of bytes which will be sent */
-		Bootloader_Send_ACK(12);
+		//Bootloader_Send_ACK(12);
 		/* Sending the list of commends to meet the target from commend */
-		Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,12);
-
-		Bootloader_Jump_To_User_App(Host_Buffer); /////////////////////////////////////
-	}
-	else {
+		//Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,12);
+	BL_PrintMassage(
+			"CBL_GET_VER_CMD %x\r\nCBL_GET_HELP_CMD %x\r\nCBL_GET_CID_CMD %x\r\n",
+			Bootloader_Supported_CMDs[0], Bootloader_Supported_CMDs[1],
+			Bootloader_Supported_CMDs[2]);
+	BL_PrintMassage(
+			"CBL_GET_RDP_STATUS_CMD %x\r\nCBL_GO_TO_ADDER_CMD %x\r\nCBL_FLASH_ERASE_CMD %x\r\n",
+			Bootloader_Supported_CMDs[3], Bootloader_Supported_CMDs[4],
+			Bootloader_Supported_CMDs[5]);
+	BL_PrintMassage(
+			"CBL_MEM_WRITE_CMD %x\r\nCBL_EN_R_W_PROTECT_CMD %x\r\nCBL_MEM_READ_CMD %x\r\n",
+			Bootloader_Supported_CMDs[6], Bootloader_Supported_CMDs[7],
+			Bootloader_Supported_CMDs[8]);
+	BL_PrintMassage(
+			"CBL_READ_SECTOR_STATUS_CMD %x\r\nCBL_OTP_READ_CMD %x\r\nCBL_CHANGE_ROP_Level_CMD %x\r\n",
+			Bootloader_Supported_CMDs[9], Bootloader_Supported_CMDs[10],
+			Bootloader_Supported_CMDs[11]);
+	BL_PrintMassage("CBL_JUMP_TO_APP %x\r\n",Bootloader_Supported_CMDs[12]);
+	/*}
+	else
+		{
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
+/* To get Micro-controller number
+   To delay with this commend you should send :
+	1- Data length = 0x01
+	2- Commend number = 0x12 */
 static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
+	//uint32_t Host_CRC32 = 0 ;
 	/* Identify the id of used MCU */
 	uint16_t MCU_IdentificationNumber = 0 ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Read MCU chip identification number \r\n ");
+	BL_PrintMassage ("Read MCU chip identification number \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+	/*if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Get MCU chip identification number */
 		MCU_IdentificationNumber = (uint16_t)((DBGMCU->IDCODE)&0x00000FFF);
 
 		/* Report MCU chip identification number */
-		Bootloader_Send_ACK(2);
-		Bootloader_Send_Data_To_Host((uint8_t *)(&MCU_IdentificationNumber),2);
-	}
+		//Bootloader_Send_ACK(2);
+		//Bootloader_Send_Data_To_Host((uint8_t *)(&MCU_IdentificationNumber),2);
+		BL_PrintMassage("IdentificationNumber = %x\r\n",MCU_IdentificationNumber);
+
+	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
 static void CBL_STM32F103_GET_RDP_Level (uint8_t *RDP_Level){
@@ -301,41 +334,47 @@ static void CBL_STM32F103_GET_RDP_Level (uint8_t *RDP_Level){
 	*RDP_Level = (uint8_t)FLASH_OBProgram.RDPLevel ;
 }
 
+/* To get the protection level of flash memory in Micro-controller number
+   To delay with this commend you should send :
+	1- Data length = 0x01
+	2- Commend number = 0x13 */
 static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
+	//uint32_t Host_CRC32 = 0 ;
 	/* Level of protection */
 	uint8_t RDP_Level = 0 ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Read the flash protection out level \r\n ");
+	BL_PrintMassage ("Read the flash protection out level \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+	/*if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Report acknowledge message*/
-		Bootloader_Send_ACK(1);
+		//Bootloader_Send_ACK(1);
 		/* Read protection level */
 		CBL_STM32F103_GET_RDP_Level(&RDP_Level);
 		/* Report level */
-		Bootloader_Send_Data_To_Host((uint8_t *)(&RDP_Level),1);
-	}
+		//Bootloader_Send_Data_To_Host((uint8_t *)(&RDP_Level),1);
+		BL_PrintMassage("Protection level = %x\r\n",RDP_Level);
+	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
+
 
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address){
 	/* TO check on state of given address is in region or not */
@@ -352,31 +391,38 @@ static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address){
 	return Address_Verification_State ;
 }
 
+/* To jump to specific address
+   To delay with this commend you should send :
+	1- Data length = 0x05
+	2- Commend number = 0x14
+	3- Wanted address = (4bytes) --> you should enter address in Realterm as this example
+	0x0800014c --enter--> 0x4c then 0x01 then 0x00 then 0x08
+	*/
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
+	//uint32_t Host_CRC32 = 0 ;
 	/* Buffering address */
 	uint32_t Host_Jump_Address = 0 ;
 	/* TO check on state of given address is in region or not */
 	uint8_t Address_Verification_State = ADDRESS_IS_INVALID ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("CBL_GO_TO_ADDER_CMD \r\n ");
+	BL_PrintMassage ("Bootloader jump to specified address \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+	/*if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Report MCU chip identification number */
-		Bootloader_Send_ACK(1);
+		//Bootloader_Send_ACK(1);
 
 		/* To get the content of this address */
 		Host_Jump_Address = *((uint32_t *) &(Host_Buffer[2])) ;
@@ -396,32 +442,49 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 		BL_PrintMassage("Jumped to : 0x%X \r\n",Jump_Address);
 #endif
 		}
-		/* Report the verification state */
-		Bootloader_Send_Data_To_Host((uint8_t *)(&Address_Verification_State),1);
-	}
-	else {
+		else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Address verification unsucessed\r\n");
+#endif
+		}
+	//}
+	/*else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
-static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
+/* to work with this function you should make this variations :
+	1- Data length = 0x01
+	2- Jump to application commend = 0x22
+   And be sure that
+    1- base address in application is updated in (Bootloader_Jump_To_User_App)
+    2- update size of bootloader code with suitable size as 17k or 15k
+    3- update origin address of application code in flash memory in linker script and size also
+    4- update the interrupt vector table to be allocate at start address of code in file (system_stm32f1xx.c)
+       SCB->VTOR = FLASH_BASE | 0x8000;
+  */
+static void Bootloader_Jump_To_User_App (){
 	/* Value of the main stack pointer of our main application */
-	uint32_t MSP_Value = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS) ;
+	uint32_t MSP_Value = *((volatile uint32_t*)FLASH_PAGE_BASE_ADDRESS);
 	/* Reset Handler defination function of our main application */
-	uint32_t MainAppAddr = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS+4) ;
+	uint32_t MainAppAddr = *((volatile uint32_t*)(FLASH_PAGE_BASE_ADDRESS+4));
+
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Jump to application\r\n");
+#endif
 
 	/* Declare pointer to function contain the beginning address of application */
 	pFunc ResetHandler_Address = (pFunc)MainAppAddr;
 
-	/* Reset main stack pointer */
-	__set_MSP(MSP_Value);
-
 	/* Deinitionalization of modules that used in bootloader and work
 	   the configurations of new application */
 	HAL_RCC_DeInit(); /* Resets the RCC clock configuration to the default reset state. */
+
+	/* Reset main stack pointer */
+	__set_MSP(MSP_Value);
 
 	/* Jump to Apllication Reset Handler */
 	ResetHandler_Address();
@@ -512,9 +575,9 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
+	//uint32_t Host_CRC32 = 0 ;
 	/* To check on Erase state */
 	uint8_t Erase_Status = UNSUCESSFUL_ERASE ;
 
@@ -523,16 +586,16 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+	/*if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Send acknowledge to host */
-		Bootloader_Send_ACK(1);
+		//Bootloader_Send_ACK(1);
 		/* Perform Mass erase or sector erase of the yser flash */
 		Erase_Status = Perform_Flash_Erase (Host_Buffer[2],Host_Buffer[3]);
 		if ( SUCESSFUL_ERASE == Erase_Status){
@@ -547,13 +610,13 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 		}
 		/* Report the erase state */
 		Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
-	}
+	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
 static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
@@ -606,9 +669,9 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
 
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
+	//uint32_t Host_CRC32 = 0 ;
 	/* Base address that you will write on */
 	uint32_t Host_Address = 0 ;
 	/* Number of bytes that will be sent */
@@ -622,16 +685,16 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if (CRC_OK == Bootloader_CRC_Verify(Host_Buffer,(Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)) {
+	/*if (CRC_OK == Bootloader_CRC_Verify(Host_Buffer,(Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)) {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Send acknowledge to host */
-		Bootloader_Send_ACK(1);
+		//Bootloader_Send_ACK(1);
 		/* Read Base address */
 		Host_Address = *((uint32_t *)(&Host_Buffer[2])) ;
 		/* Extract the size of new data in memory */
@@ -649,13 +712,13 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 		}
 		/* Report the address selection state */
 		Bootloader_Send_Data_To_Host((uint8_t *)(&Address_Verfication),1);
-	}
+	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
 static uint8_t Change_ROP_Level(uint8_t ROP_Level){
@@ -705,9 +768,9 @@ static uint8_t Change_ROP_Level(uint8_t ROP_Level){
 
 static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
+	//uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
+	//uint32_t Host_CRC32 = 0 ;
 	/* Status of this function */
 	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
 	/* read protection level */
@@ -718,16 +781,16 @@ static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
+	//Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
+	//Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
+	/*if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
-#endif
+#endif*/
 		/* Report acknowledge message*/
-		Bootloader_Send_ACK(1);
+		//Bootloader_Send_ACK(1);
 		/* Assign read protection level from buffer */
 		ROP_Level = Host_Buffer[2] ;
 		/* reject operation if it was level 2 protection */
@@ -752,13 +815,13 @@ static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
 			ROP_Level_Status = Change_ROP_Level( (uint8_t) ROP_Level);
 		}
 		Bootloader_Send_Data_To_Host((uint8_t *)(&ROP_Level_Status),1);
-	}
+	/*}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
 		Bootloader_Send_NACK();
-	}
+	}*/
 }
 
 void BL_PrintMassage(char *format, ...) {

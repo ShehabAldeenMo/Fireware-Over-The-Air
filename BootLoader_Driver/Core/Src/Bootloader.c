@@ -21,7 +21,7 @@ static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint3
 static void Bootloader_Send_ACK (uint8_t Reply_Length);
 static void Bootloader_Send_NACK();
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len);
-static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer);
+static void Bootloader_Jump_To_User_App (void);
 static void CBL_STM32F103_GET_RDP_Level (uint8_t *RDP_Level);
 
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
@@ -127,6 +127,10 @@ BL_Status BL_UART_Fetch_Host_Commend(void) {
 					Bootloader_Change_Read_Protection_Level(BL_HostBuffer);
 					Status = BL_OK ;
 					break;
+				case CBL_JUMP_TO_APP :
+					Bootloader_Jump_To_User_App();
+					Status = BL_OK ;
+					break;
 				default :
 					BL_PrintMassage ("Invalid commend code recieved from host !! \r\n ");
 					Status = BL_NACK ;
@@ -229,7 +233,7 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 	uint32_t Host_CRC32 = 0 ;           /* Used to get CRC data */
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("What are the commends supported by the bootloader --> All supported commends code \r\n ");
+	BL_PrintMassage ("All supported commends code \r\n ");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
@@ -245,10 +249,9 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 		Bootloader_Send_ACK(12);
 		/* Sending the list of commends to meet the target from commend */
 		Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,12);
-
-		Bootloader_Jump_To_User_App(Host_Buffer); /////////////////////////////////////
 	}
-	else {
+	else
+		{
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is failed\r\n");
 #endif
@@ -407,7 +410,7 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 	}
 }
 
-static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
+static void Bootloader_Jump_To_User_App (void){
 	/* Value of the main stack pointer of our main application */
 	uint32_t MSP_Value = *((volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS) ;
 	/* Reset Handler defination function of our main application */
