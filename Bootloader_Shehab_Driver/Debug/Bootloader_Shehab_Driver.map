@@ -2488,7 +2488,7 @@ Memory Configuration
 
 Name             Origin             Length             Attributes
 RAM              0x0000000020000000 0x0000000000005000 xrw
-FLASH            0x0000000008000000 0x0000000000010000 xr
+FLASH            0x0000000008000000 0x0000000000004400 xr
 *default*        0x0000000000000000 0xffffffffffffffff
 
 Linker script and memory map

@@ -64,7 +64,7 @@
 #define CBL_SEND_NACK                           0xCD
 
 /* the address of application region */
-#define FLASH_PAGE_BASE_ADDRESS                 0x08008000U
+#define FLASH_PAGE_BASE_ADDRESS                 0x08004400U
 
 /* To check that the given address is within range */
 #define ADDRESS_IS_VALID                        1

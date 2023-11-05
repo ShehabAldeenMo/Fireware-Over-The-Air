@@ -839,8 +839,8 @@ __STATIC_FORCEINLINE void __set_MSP(uint32_t topOfMainStack)
  800051a:	3710      	adds	r7, #16
  800051c:	46bd      	mov	sp, r7
  800051e:	bd80      	pop	{r7, pc}
- 8000520:	08008000 	.word	0x08008000
- 8000524:	08008004 	.word	0x08008004
+ 8000520:	08004400 	.word	0x08004400
+ 8000524:	08004404 	.word	0x08004404
  8000528:	08003780 	.word	0x08003780
 
 0800052c <Perform_Flash_Erase>:
