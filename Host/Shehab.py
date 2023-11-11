@@ -84,7 +84,7 @@ def Read_Serial_Port(Data_Len):
     while Serial_Value_len <= 0:
         Serial_Value = Serial_Port_Obj.read(Data_Len)
         Serial_Value_len = len(Serial_Value)
-        print("Waiting Replay from the Bootloader")
+        print("Waiting Replay from the BootLoader")
     return Serial_Value
     
     '''
