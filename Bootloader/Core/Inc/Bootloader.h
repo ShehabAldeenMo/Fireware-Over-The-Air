@@ -18,14 +18,14 @@
 
 /*==================== Macro Declerations  ===========================*/
 /* The configurations of BL using */
-#define BL_DEBUG_UART                           &huart2 // make it on different port and communication
+#define BL_DEBUG_UART                           &huart2 // make it on different port from BL_HOST_COMMUNICATION_UART
 #define BL_HOST_COMMUNICATION_UART              &huart2
 #define CRC_ENGINE_OBJ                          &hcrc
 
 /* Enable debugging messages to be sent to check the status of BL */
 #define DEBUG_INFO_ENABLE                       0x01
 #define DEBUG_INFO_DISABLE                      0x00
-#define BL_DEBUG_ENABLE                         DEBUG_INFO_DISABLE
+#define BL_DEBUG_ENABLE                         DEBUG_INFO_DISABLE /* Enable when you use BL_DEBUG_UART different from BL_HOST_COMMUNICATION_UART */
 
 /* Choose the communication protocals that you use with bootloader */
 #define BL_ENABLE_UART_DEBUG_MESSAGE            0x00
@@ -45,17 +45,15 @@
 #define CBL_GO_TO_ADDER_CMD                     0x14 /* Sucess or Error code --> This commend is used to jump on bootloader to specified address (1 byte)*/
 #define CBL_FLASH_ERASE_CMD                     0x15 /* Sucess or Error code --> This commend is used to miss erase or sector erase of the user flash (1 byte) */
 #define CBL_MEM_WRITE_CMD                       0x16 /* Sucess or Error code --> This commend is used to write data in different memories of the MCU (1 byte) */
-#define CBL_EN_R_W_PROTECT_CMD                  0x17 /* Sucess or Error code --> This commend is used to write\read protect on different sectors of the user flash (1 byte) */
-#define CBL_MEM_READ_CMD                        0x18 /* AMemory contents of length asked by the host (N bytes) This commend is used to read data from different memories of the MCU */
-#define CBL_READ_SECTOR_STATUS_CMD              0x19 /* All sectors status, This commend is used to read all the sector protection status (2 bytes) */
-#define CBL_OTP_READ_CMD                        0x20
-#define CBL_CHANGE_ROP_Level_CMD                0x17
-#define CBL_JUMP_TO_APP                         0x18
+#define CBL_JUMP_TO_APP                         0x17
+
 #define FIRST_COMMEND                           0x10
+
+#define NumberOfCommends                        0x08
 
 /* That is the versions of your code and vendor id's */
 #define CBL_VENDOR_ID                           100
-#define CBL_SW_MAJOR_VERSION                    1
+#define CBL_SW_MAJOR_VERSION                    4
 #define CBL_SW_MINOR_VERSION                    1
 #define CBL_SW_PATCH_VERSION                    0
 
@@ -80,7 +78,7 @@
 #define STM32F103_FLASH_END                     (FLASH_BASE+STM32F103_FLASH_SIZE)
 #define STM32F103_FLASH_PAGE_SIZE               0x400 /* 1K */
 
-#define APPLICATION_SIZE                        5
+#define APPLICATION_SIZE                        7
 
 /* Related to pages in flash memory */
 #define CBL_FLASH_MAX_PAGES_NUMBER              128

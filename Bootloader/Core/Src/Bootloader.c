@@ -17,7 +17,6 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer);
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer);
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer);
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer);
-static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer);
 static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer);
 
 static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint32_t Host_CRC);
@@ -29,13 +28,12 @@ static uint8_t CBL_STM32F103_GET_RDP_Level ();
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
 static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Pages);
 static uint8_t Flash_Memory_Write_Payload (uint8_t *Host_PayLoad , uint32_t Payload_Start_Address,uint8_t Payload_Len);
-static uint8_t Change_ROP_Level(uint8_t ROP_Level);
 
 /*===================Static global Variables Definations  ==================*/
 static uint8_t BL_HostBuffer[BL_HOST_BUFFER_RX_LENGTH];
 
 /* All supported commends by bootloaders */
-static uint8_t Bootloader_Supported_CMDs[13] = {
+static uint8_t Bootloader_Supported_CMDs[NumberOfCommends] = {
 	CBL_GET_VER_CMD ,
 	CBL_GET_HELP_CMD ,
 	CBL_GET_CID_CMD ,
@@ -43,18 +41,13 @@ static uint8_t Bootloader_Supported_CMDs[13] = {
 	CBL_GO_TO_ADDER_CMD,
 	CBL_FLASH_ERASE_CMD,
 	CBL_MEM_WRITE_CMD,
-	CBL_EN_R_W_PROTECT_CMD,
-	CBL_MEM_READ_CMD,
-	CBL_READ_SECTOR_STATUS_CMD,
-	CBL_OTP_READ_CMD,
-	CBL_CHANGE_ROP_Level_CMD,
 	CBL_JUMP_TO_APP
 };
 
-static BL_pFunc Bootloader_Functions [9] = {&Bootloader_Get_Version,
+static BL_pFunc Bootloader_Functions [NumberOfCommends] = {&Bootloader_Get_Version,
 &Bootloader_Get_Help,&Bootloader_Get_chip_Identification_Number,&Bootloader_Read_Protection_Level,
 &Bootloader_Jump_To_Address,&Bootloader_Erase_Flash,&Bootloader_Memory_Write
-,&Bootloader_Change_Read_Protection_Level,&Bootloader_Jump_To_User_App} ;
+,&Bootloader_Jump_To_User_App} ;
 
 /*======================== Software Interface Definations  ====================*/
 BL_Status BL_UART_Fetch_Host_Commend(void) {
@@ -167,14 +160,11 @@ static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Le
 }
 
 /*
-  Prefered to use it with Shehab.py.
-  Be sure that if you use host you can't use Realterm beacuse of port is
-  busy (Solution use both with setip two ports but it's not setuped now).
-  if you are not delay with host, Don't forget to hash any thing relate to CRC or
-  Bootloader_Send_Data_To_Host
-  To delay with this commend you should send in Realterm :
-   1- Data length = 0x01
-   2- Commend number = 0x10 */
+ your packet is
+   1- 1 byte for data length = 0x05
+   2- 1 byte for commend number = 0x10
+   3- 4 bytes for CRC verifications
+   */
 static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 	/* Buffering the version and vendor id's in BL_Version */
 	uint8_t BL_Version[4] = { CBL_VENDOR_ID, CBL_SW_MAJOR_VERSION,
@@ -216,14 +206,11 @@ static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 }
 
 /*
-   Prefered to use it with DEBUG_INFO_ENABLE.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x01
-	2- Commend number = 0x11 */
+ Your packet is :
+   1- 1 byte data length = 0x05
+   2- 1 byte commend number = 0x11
+   3- 4 bytes for CRC verifications
+	*/
 static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 	uint16_t Host_CMD_Packet_Len = 0 ;  /* used to define the beginning of CRC address in buffer */
 	uint32_t Host_CRC32 = 0 ;           /* Used to get CRC data */
@@ -242,9 +229,9 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 		BL_PrintMassage("CRC is passed\r\n");
 #endif
 		/* Sending Acknowledge message and number of bytes which will be sent */
-		Bootloader_Send_ACK(12);
+		Bootloader_Send_ACK(NumberOfCommends);
 		/* Sending the list of commends to meet the target from commend */
-		Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,12);
+		Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,NumberOfCommends);
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage(
 			"CBL_GET_VER_CMD 0x%x\r\nCBL_GET_HELP_CMD 0x%x\r\nCBL_GET_CID_CMD 0x%x\r\n",
@@ -275,14 +262,10 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 }
 
 /*
-   Prefered to use it with DEBUG_INFO_ENABLE.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x01
-	2- Commend number = 0x12
+ Your packet is :
+   1- 1 byte for data length = 0x05
+   2- 1 byte for commend number = 0x12
+   3- 4 bytes for CRC verifications
 	*/
 static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
@@ -334,14 +317,11 @@ static uint8_t CBL_STM32F103_GET_RDP_Level (){
 }
 
 /*
-   It's used only with DEBUG_INFO_ENABLE to show you the level number.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x01
-	2- Commend number = 0x13 */
+ Your packet is :
+   1- 1 byte data length = 0x05
+   2- 1 byte commend number = 0x13
+   3- 4 bytes for CRC verifications
+ */
 static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
@@ -398,17 +378,11 @@ static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address){
 }
 
 /*
-   Prefered to use it with anything.
-   Be sure that if you use host you can't use
-   Realterm beacuse of port is busy (Solution use both with setip two ports but
-   it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host or Bootloader_Send_ACK or Bootloader_Send_NACK
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x05
-	2- Commend number = 0x14
-	3- Wanted address = (4bytes) --> you should enter address in Realterm as this example
-	0x0800014c --enter--> 0x4c then 0x01 then 0x00 then 0x08
+ Your packet is :
+   1- 1 byte data length = 0x09
+   2- 1 byte commend number = 0x14
+   3- 4 bytes for address
+   4- 4 bytes for CRC verifications
 	*/
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
@@ -480,19 +454,14 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 }
 
 /*
-   Prefered to use it with DEBUG_INFO_ENABLE.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not work with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x01
-	2- Jump to application commend = 0x22
-   And be sure that
-    1- base address in application is updated in (Bootloader_Jump_To_User_App)
-    2- update size of bootloader code with suitable size as 17k or 15k
-    3- update origin address of application code in flash memory in linker script and size also
-    4- update the interrupt vector table to be allocate at start address of code in file (system_stm32f1xx.c)
+ Your packet is :
+   1- 1 byte data length = 0x01
+   2- 1 byte commend number = 0x17
+ And be sure that
+   1- base address in application is updated in (Bootloader_Jump_To_User_App)
+   2- update size of bootloader code with suitable size as 17k or 15k
+   3- update origin address of application code in flash memory in linker script and size also
+   4- update the interrupt vector table to be allocate at start address of code in file (system_stm32f1xx.c)
        SCB->VTOR = FLASH_BASE | 0x8000;
   */
 static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
@@ -519,7 +488,6 @@ static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
 	ResetHandler_Address();
 }
 
-/*  ========================  */
 static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Pages){
 	/* To check that the sectors in not overflow the size of flash */
 	uint8_t Page_validity_Status  = PAGE_INVALID_NUMBER ;
@@ -594,16 +562,12 @@ static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Page
 }
 
 /*
-   It's used only with DEBUG_INFO_ENABLE.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x03
-	2- First byte is commend number = 0x15
-	3- Second byte is the number of page
-	4- Third Byte equals the number of pages
+ Your packet is :
+   1- 1 byte data length = 0x07
+   2- 1 byte commend number = 0x11
+   3- 4 bytes for page address
+   4- 1 byte for number of pages
+   5- 4 bytes for CRC verifications
 	*/
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
@@ -719,20 +683,14 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
 	return Status;
 }
 
-/* To write on specific half word
-   Prefered to use it with DEBUG_INFO_ENABLE if you want to write on one word and use Host if
-   you want to write many words.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x07
-	2- First byte is commend number = 0x16
-	3- Wanted address = (4bytes) --> you should enter address in Realterm as this example
-	   0x0800014c --enter--> 0x4c then 0x01 then 0x00 then 0x08
-	4- Third Byte equals the number of bytes that you want to write in
-	5- Enter in fourth byte the data that you want to write
+/*
+ Your packet is :
+   1- 1 byte data length = 0x0B+0x0N
+   2- 1 byte commend number = 0x16
+   3- 4 bytes for address
+   4- 1 byte for size of writing data
+   5- N bytes of data info
+   6- 4 bytes for CRC verifications
 	*/
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	/* used to define the beginning of CRC address in buffer */
@@ -807,137 +765,6 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	}
 }
 
-static uint8_t Change_ROP_Level(uint8_t ROP_Level){
-	/* Status of function calling */
-	HAL_StatusTypeDef HAL_Status = HAL_ERROR ;
-	/* Parameter[in] of function that configure level of protection */
-	FLASH_OBProgramInitTypeDef FLASH_OBProgmInit;
-	/* Status of this function */
-	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-
-	/* open flash option control registers acess */
-	HAL_Status = HAL_FLASH_OB_Unlock();
-	/* check if it is not opened correctly */
-	if (HAL_Status != HAL_OK){
-		ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-	}
-	else {
-		/* Initialize configurations of parameter[in] for configure level of protection */
-		FLASH_OBProgmInit.OptionType = OPTIONBYTE_RDP ; /*!<RDP option byte configuration*/
-		FLASH_OBProgmInit.Banks      = FLASH_BANK_1 ;
-		FLASH_OBProgmInit.RDPLevel   = (uint32_t)ROP_Level ;
-		/* Program option bytes */
-		HAL_Status = HAL_FLASHEx_OBProgram(&FLASH_OBProgmInit);
-		/* Check that it was failed */
-		if (HAL_Status != HAL_OK){
-			/* Locking the flash option control registers access */
-			HAL_Status = HAL_FLASH_OB_Lock();
-			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-		}
-		else {
-			/* Launch the option byte loading */
-			HAL_FLASH_OB_Launch();
-			/* Locking the flash option control registers access */
-			HAL_Status = HAL_FLASH_OB_Lock();
-			/* Check that it was failed */
-			if (HAL_Status != HAL_OK){
-				ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-			}
-			else {
-				/* Locking the flash option control registers access */
-				ROP_Level_Status = ROP_LEVEL_CHANGE_VALID;
-			}
-		}
-	}
-	return ROP_Level_Status ;
-}
-
-/*
-   It's used only with DEBUG_INFO_ENABLE.
-   Be sure that if you use host you can't use Realterm beacuse of port is
-   busy (Solution use both with setip two ports but it's not setuped now).
-   if you are not delay with host, Don't forget to hash any thing relate to CRC or
-   Bootloader_Send_Data_To_Host
-   To delay with this commend you should send in Realterm :
-	1- Data length = 0x02
-	2- First byte is commend number = 0x21
-	3- Second byte to enter your level 0,1
-	*/
-static void Bootloader_Change_Read_Protection_Level(uint8_t *Host_Buffer){
-	/* used to define the beginning of CRC address in buffer */
-	uint16_t Host_CMD_Packet_Len = 0 ;
-	/* Used to get CRC data */
-	uint32_t Host_CRC32 = 0 ;
-	/* Status of this function */
-	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-	/* read protection level */
-	 uint8_t ROP_Level = 0 ;
-
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Change the flash protection out level \r\n");
-#endif
-
-	/* Extract the CRC32 and Packet length sent by the HOST */
-	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
-	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
-
-	/* CRC Verfications */
-	if ( CRC_OK == Bootloader_CRC_Verify(Host_Buffer, (Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32)){
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-		BL_PrintMassage("CRC is passed\r\n");
-#endif
-		/* Report acknowledge message*/
-		Bootloader_Send_ACK(1);
-		/* Assign read protection level from buffer */
-		ROP_Level = Host_Buffer[2] ;
-		/* reject operation if it was level 2 protection */
-		if (ROP_Level == 2){
-			ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-#if  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
-			BL_PrintMassage ("Rejected to be in level 2\r\n");
-#endif
-		}
-		else
-		{
-			if ( ROP_Level == 0 ){
-				/* 0xAA --> RDP_Level_0 */
-				ROP_Level = OB_RDP_LEVEL_0 ;
-				ROP_Level_Status = ROP_LEVEL_CHANGE_VALID ;
-			}
-			else if ( ROP_Level == 1 ) {
-				/* 0x55 --> RDP_Level_1 */
-				ROP_Level = OB_RDP_LEVEL_1 ;
-				ROP_Level_Status = ROP_LEVEL_CHANGE_VALID ;
-			}
-			else {
-				ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID ;
-#if  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
-				BL_PrintMassage ("Invalid input level\r\n");
-#endif
-			}
-			/* Request change the read protection level */
-			ROP_Level_Status = Change_ROP_Level( (uint8_t) ROP_Level);
-
-			if (ROP_Level_Status == ROP_LEVEL_CHANGE_VALID){
-#if  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
-				BL_PrintMassage ("Sucessful changed level\r\n");
-#endif
-			}
-			else {
-#if  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
-				BL_PrintMassage ("Unsucessful changed level\r\n");
-#endif
-			}
-		}
-		Bootloader_Send_Data_To_Host((uint8_t *)(&ROP_Level_Status),1);
-	}
-	else {
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-		BL_PrintMassage("CRC is failed\r\n");
-#endif
-		Bootloader_Send_NACK();
-	}
-}
 
 void BL_PrintMassage(char *format, ...) {
 	char Message[100] = { 0 };
