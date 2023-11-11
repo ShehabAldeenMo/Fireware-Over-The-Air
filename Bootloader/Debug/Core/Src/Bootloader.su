@@ -12,9 +12,9 @@
 ../Core/Src/Bootloader.c:413:13:Bootloader_Jump_To_Address	40	static
 ../Core/Src/Bootloader.c:498:13:Bootloader_Jump_To_User_App	32	static,ignoring_inline_asm
 ../Core/Src/Bootloader.c:523:16:Perform_Flash_Erase	40	static
-../Core/Src/Bootloader.c:618:13:Bootloader_Erase_Flash	32	static
-../Core/Src/Bootloader.c:664:16:Flash_Memory_Write_Payload	48	static
-../Core/Src/Bootloader.c:747:13:Bootloader_Memory_Write	32	static
-../Core/Src/Bootloader.c:820:16:Change_ROP_Level	48	static
-../Core/Src/Bootloader.c:876:13:Bootloader_Change_Read_Protection_Level	32	static
-../Core/Src/Bootloader.c:952:6:BL_PrintMassage	112	static
+../Core/Src/Bootloader.c:608:13:Bootloader_Erase_Flash	32	static
+../Core/Src/Bootloader.c:654:16:Flash_Memory_Write_Payload	48	static
+../Core/Src/Bootloader.c:737:13:Bootloader_Memory_Write	32	static
+../Core/Src/Bootloader.c:810:16:Change_ROP_Level	48	static
+../Core/Src/Bootloader.c:866:13:Bootloader_Change_Read_Protection_Level	32	static
+../Core/Src/Bootloader.c:942:6:BL_PrintMassage	112	static

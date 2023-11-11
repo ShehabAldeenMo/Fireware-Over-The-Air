@@ -27,7 +27,7 @@ static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Le
 
 static uint8_t CBL_STM32F103_GET_RDP_Level ();
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
-static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages);
+static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Pages);
 static uint8_t Flash_Memory_Write_Payload (uint8_t *Host_PayLoad , uint32_t Payload_Start_Address,uint8_t Payload_Len);
 static uint8_t Change_ROP_Level(uint8_t ROP_Level);
 
@@ -520,9 +520,9 @@ static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
 }
 
 /*  ========================  */
-static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages){
+static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Pages){
 	/* To check that the sectors in not overflow the size of flash */
-	uint8_t Page_validity_Status  = UNSUCESSFUL_ERASE ;
+	uint8_t Page_validity_Status  = PAGE_INVALID_NUMBER ;
 	/* Status of erasing flash */
 	HAL_StatusTypeDef HAL_Status = HAL_ERROR ;
 	/* Error sector status */
@@ -532,43 +532,40 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 	/* Define the used bank in flash memory */
 	pEraseInit.Banks = FLASH_BANK_1 ;
 
-	/* trying to erase bootloader --> PAGE_INVALID_NUMBER */
-	if (Page_Number < CBL_PAGE_END){
-		Page_validity_Status = UNSUCESSFUL_ERASE ;
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("It will erase in bootloader code \r\n");
-#endif
-	}
 	/* another pages is agreed but check that is acess the number of pages in flash */
-	else if (((Page_Number + Number_Of_Pages) >= CBL_FLASH_MAX_PAGES_NUMBER)
-			&& CBL_FLASH_MASS_ERASE != Page_Number) {
+	if (Number_Of_Pages >= CBL_FLASH_MAX_PAGES_NUMBER
+			&& CBL_FLASH_MASS_ERASE != PageAddress) {
+		Page_validity_Status = PAGE_INVALID_NUMBER ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("It is over the flash size\r\n");
+		BL_PrintMassage ("It is over the flash size\r\n");
 #endif
-	Page_validity_Status = UNSUCESSFUL_ERASE ;
 	}
 	/* erase all memory or specific page */
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("It is in range of flash memory \r\n");
 #endif
+		Page_validity_Status = PAGE_VALID_NUMBER ;
+
 		/* Check if he want to erase all memory flash */
-		if ( CBL_FLASH_MASS_ERASE == Page_Number  ){
-			pEraseInit.TypeErase = FLASH_TYPEERASE_MASSERASE ;
+		if ( CBL_FLASH_MASS_ERASE == PageAddress  ){
+			pEraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
+			pEraseInit.PageAddress = FLASH_PAGE_BASE_ADDRESS;
+			pEraseInit.NbPages = APPLICATION_SIZE;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Mase erase \r\n");
 #endif
 		}
 		/* erase specific page */
 		else {
-			pEraseInit.TypeErase   = FLASH_TYPEERASE_PAGES ;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Page erase \r\n");
 #endif
-			pEraseInit.PageAddress = ((uint32_t) Page_Number
-					* (STM32F103_FLASH_PAGE_SIZE) + FLASH_BASE);
-			pEraseInit.NbPages     = Number_Of_Pages ;
+			pEraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
+			pEraseInit.PageAddress = PageAddress;
+			pEraseInit.NbPages = Number_Of_Pages;
 		}
+
 		/* To unlock flash memory */
 		HAL_Status = HAL_FLASH_Unlock();
 
@@ -576,6 +573,7 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 		if (HAL_Status == HAL_OK){
 			/* Perform a mass erase or erase the specified FLASH memory sectors */
 			HAL_Status = HAL_FLASHEx_Erase(&pEraseInit, &PageError);
+
 			/* To check that the flash memory is erased sucessfully */
 			if (HAL_SUCESSFUL_ERASE == PageError){
 				Page_validity_Status = SUCESSFUL_ERASE ;
@@ -584,22 +582,14 @@ static uint8_t Perform_Flash_Erase (uint8_t Page_Number, uint8_t Number_Of_Pages
 			else {
 				Page_validity_Status = UNSUCESSFUL_ERASE ;
 			}
+
+			HAL_Status = HAL_FLASH_Lock();
 		}
 		/* Not opened */
 		else {
 			Page_validity_Status = UNSUCESSFUL_ERASE ;
 		}
-		/* if it erased correctly and opened correctly */
-		if (Page_validity_Status == SUCESSFUL_ERASE && HAL_Status == HAL_OK ){
-			/* To lock flash memory */
-			HAL_Status = HAL_FLASH_Lock();
-		}
-		/* not erased or opened */
-		else {
-			Page_validity_Status  = UNSUCESSFUL_ERASE ;
-		}
 	}
-
 	return Page_validity_Status ;
 }
 
@@ -639,7 +629,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 		/* Send acknowledge to host */
 		Bootloader_Send_ACK(1);
 		/* Perform Mass erase or sector erase of the yser flash */
-		Erase_Status = Perform_Flash_Erase (Host_Buffer[2],Host_Buffer[3]);
+		Erase_Status = Perform_Flash_Erase ( *( (uint32_t*)&Host_Buffer[2] ),Host_Buffer[6]);
 		/* Report the erase state */
 		Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
 		if ( SUCESSFUL_ERASE == Erase_Status){

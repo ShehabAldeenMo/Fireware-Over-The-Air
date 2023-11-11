@@ -80,6 +80,8 @@
 #define STM32F103_FLASH_END                     (FLASH_BASE+STM32F103_FLASH_SIZE)
 #define STM32F103_FLASH_PAGE_SIZE               0x400 /* 1K */
 
+#define APPLICATION_SIZE                        5
+
 /* Related to pages in flash memory */
 #define CBL_FLASH_MAX_PAGES_NUMBER              128
 #define CBL_PAGE_END                            17
