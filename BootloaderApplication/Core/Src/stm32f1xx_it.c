@@ -51,7 +51,7 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern UART_HandleTypeDef huart2;
+//extern UART_HandleTypeDef huart2;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
