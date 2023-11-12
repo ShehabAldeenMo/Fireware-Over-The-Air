@@ -1,4 +1,4 @@
-[# Flash Over The Air]
+# Flash Over The Air
 This project is to enable remote firmware updates using **ESP8266**, **STM32F103C8T6** and Geogle Firebase.The **ESP8266** connects to **WiFi**, downloads the bootloader and firmware code, and communicates with the STM32.
 
 # Table of Contents
