@@ -415,7 +415,7 @@ SerialPortName = input("Enter the Port Name of your device(Ex: COM3):")
 Serial_Port_Configuration(SerialPortName)
         
 while True:
-    print("\nSTM32F407 Custome BootLoader")
+    print("\nSTM32F103 Custome BootLoader")
     print("==============================")
     print("Which command you need to send to the bootLoader :");
     print("   CBL_GET_VER_CMD              --> 1")

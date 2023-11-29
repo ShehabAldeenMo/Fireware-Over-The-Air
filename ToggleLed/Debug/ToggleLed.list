@@ -1,0 +1,1675 @@
+
+ToggleLed.elf:     file format elf32-littlearm
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .isr_vector   00000130  08004400  08004400  00004400  2**0
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  1 .text         00000930  08004530  08004530  00004530  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  2 .rodata       00000000  08004e60  08004e60  0001002c  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  3 .ARM.extab    00000000  08004e60  08004e60  0001002c  2**0
+                  CONTENTS
+  4 .ARM          00000000  08004e60  08004e60  0001002c  2**0
+                  CONTENTS
+  5 .preinit_array 00000000  08004e60  08004e60  0001002c  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  6 .init_array   00000004  08004e60  08004e60  00004e60  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  7 .fini_array   00000004  08004e64  08004e64  00004e64  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  8 .data         0000002c  20000000  08004e68  00010000  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  9 .bss          00000118  2000002c  08004e94  0001002c  2**2
+                  ALLOC
+ 10 ._user_heap_stack 00000604  20000144  08004e94  00010144  2**0
+                  ALLOC
+ 11 .ARM.attributes 00000029  00000000  00000000  0001002c  2**0
+                  CONTENTS, READONLY
+ 12 .comment      00000043  00000000  00000000  00010055  2**0
+                  CONTENTS, READONLY
+ 13 .debug_info   00002add  00000000  00000000  00010098  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 14 .debug_abbrev 000008ff  00000000  00000000  00012b75  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 15 .debug_aranges 00000190  00000000  00000000  00013478  2**3
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 16 .debug_rnglists 000000de  00000000  00000000  00013608  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 17 .debug_macro  00001554  00000000  00000000  000136e6  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 18 .debug_line   00000f6a  00000000  00000000  00014c3a  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 19 .debug_str    000055a3  00000000  00000000  00015ba4  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 20 .debug_frame  00000394  00000000  00000000  0001b148  2**2
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+ 21 .debug_line_str 00000064  00000000  00000000  0001b4dc  2**0
+                  CONTENTS, READONLY, DEBUGGING, OCTETS
+
+Disassembly of section .text:
+
+08004530 <__do_global_dtors_aux>:
+ 8004530:	b510      	push	{r4, lr}
+ 8004532:	4c05      	ldr	r4, [pc, #20]	; (8004548 <__do_global_dtors_aux+0x18>)
+ 8004534:	7823      	ldrb	r3, [r4, #0]
+ 8004536:	b933      	cbnz	r3, 8004546 <__do_global_dtors_aux+0x16>
+ 8004538:	4b04      	ldr	r3, [pc, #16]	; (800454c <__do_global_dtors_aux+0x1c>)
+ 800453a:	b113      	cbz	r3, 8004542 <__do_global_dtors_aux+0x12>
+ 800453c:	4804      	ldr	r0, [pc, #16]	; (8004550 <__do_global_dtors_aux+0x20>)
+ 800453e:	f3af 8000 	nop.w
+ 8004542:	2301      	movs	r3, #1
+ 8004544:	7023      	strb	r3, [r4, #0]
+ 8004546:	bd10      	pop	{r4, pc}
+ 8004548:	2000002c 	.word	0x2000002c
+ 800454c:	00000000 	.word	0x00000000
+ 8004550:	08004e48 	.word	0x08004e48
+
+08004554 <frame_dummy>:
+ 8004554:	b508      	push	{r3, lr}
+ 8004556:	4b03      	ldr	r3, [pc, #12]	; (8004564 <frame_dummy+0x10>)
+ 8004558:	b11b      	cbz	r3, 8004562 <frame_dummy+0xe>
+ 800455a:	4903      	ldr	r1, [pc, #12]	; (8004568 <frame_dummy+0x14>)
+ 800455c:	4803      	ldr	r0, [pc, #12]	; (800456c <frame_dummy+0x18>)
+ 800455e:	f3af 8000 	nop.w
+ 8004562:	bd08      	pop	{r3, pc}
+ 8004564:	00000000 	.word	0x00000000
+ 8004568:	20000030 	.word	0x20000030
+ 800456c:	08004e48 	.word	0x08004e48
+
+08004570 <Det_ReportError>:
+*   SW Version       : 1.0.0
+============================================================================*/
+
+#include <Det.h>
+
+Std_ReturnType Det_ReportError(uint16 ModuleId,uint8 ApiId , uint8 ErrorId){
+ 8004570:	b480      	push	{r7}
+ 8004572:	b083      	sub	sp, #12
+ 8004574:	af00      	add	r7, sp, #0
+ 8004576:	4603      	mov	r3, r0
+ 8004578:	80fb      	strh	r3, [r7, #6]
+ 800457a:	460b      	mov	r3, r1
+ 800457c:	717b      	strb	r3, [r7, #5]
+ 800457e:	4613      	mov	r3, r2
+ 8004580:	713b      	strb	r3, [r7, #4]
+	for(;;);
+ 8004582:	e7fe      	b.n	8004582 <Det_ReportError+0x12>
+
+08004584 <Dio_VidInit>:
+ *
+ *
+ */
+
+/* to initialize all pins with the configured types that used in Cfg.c */
+void Dio_VidInit(void) {
+ 8004584:	b480      	push	{r7}
+ 8004586:	b083      	sub	sp, #12
+ 8004588:	af00      	add	r7, sp, #0
+	DIO_SemArryOfPins = xSemaphoreCreateBinary();
+	xSemaphoreGive(DIO_SemArryOfPins);
+	DIO_SemArryOfActivition  = xSemaphoreCreateBinary();
+	xSemaphoreGive(DIO_SemArryOfActivition);
+#endif
+	for (uint8 i = 0; i < NUM_OF_PORT; i++) {
+ 800458a:	2300      	movs	r3, #0
+ 800458c:	71fb      	strb	r3, [r7, #7]
+ 800458e:	e059      	b.n	8004644 <Dio_VidInit+0xc0>
+		switch (ArrOfPorts[i].Port_Num) {
+ 8004590:	79fb      	ldrb	r3, [r7, #7]
+ 8004592:	4a31      	ldr	r2, [pc, #196]	; (8004658 <Dio_VidInit+0xd4>)
+ 8004594:	f812 3013 	ldrb.w	r3, [r2, r3, lsl #1]
+ 8004598:	2b02      	cmp	r3, #2
+ 800459a:	d034      	beq.n	8004606 <Dio_VidInit+0x82>
+ 800459c:	2b02      	cmp	r3, #2
+ 800459e:	dc4e      	bgt.n	800463e <Dio_VidInit+0xba>
+ 80045a0:	2b00      	cmp	r3, #0
+ 80045a2:	d002      	beq.n	80045aa <Dio_VidInit+0x26>
+ 80045a4:	2b01      	cmp	r3, #1
+ 80045a6:	d017      	beq.n	80045d8 <Dio_VidInit+0x54>
+ 80045a8:	e049      	b.n	800463e <Dio_VidInit+0xba>
+		case Dio_GPIO_A:
+			if (ArrOfPorts[i].Level == STD_ON) {
+ 80045aa:	79fb      	ldrb	r3, [r7, #7]
+ 80045ac:	4a2a      	ldr	r2, [pc, #168]	; (8004658 <Dio_VidInit+0xd4>)
+ 80045ae:	005b      	lsls	r3, r3, #1
+ 80045b0:	4413      	add	r3, r2
+ 80045b2:	785b      	ldrb	r3, [r3, #1]
+ 80045b4:	2b01      	cmp	r3, #1
+ 80045b6:	d104      	bne.n	80045c2 <Dio_VidInit+0x3e>
+				GPIOA->ODR.Reg = 0x0000FFFF;
+ 80045b8:	4b28      	ldr	r3, [pc, #160]	; (800465c <Dio_VidInit+0xd8>)
+ 80045ba:	f64f 72ff 	movw	r2, #65535	; 0xffff
+ 80045be:	60da      	str	r2, [r3, #12]
+			} else if (ArrOfPorts[i].Level == STD_OFF) {
+				GPIOA->ODR.Reg = 0x00000000;
+			} else {
+				/* Invalid input */
+			}
+			break;
+ 80045c0:	e038      	b.n	8004634 <Dio_VidInit+0xb0>
+			} else if (ArrOfPorts[i].Level == STD_OFF) {
+ 80045c2:	79fb      	ldrb	r3, [r7, #7]
+ 80045c4:	4a24      	ldr	r2, [pc, #144]	; (8004658 <Dio_VidInit+0xd4>)
+ 80045c6:	005b      	lsls	r3, r3, #1
+ 80045c8:	4413      	add	r3, r2
+ 80045ca:	785b      	ldrb	r3, [r3, #1]
+ 80045cc:	2b00      	cmp	r3, #0
+ 80045ce:	d131      	bne.n	8004634 <Dio_VidInit+0xb0>
+				GPIOA->ODR.Reg = 0x00000000;
+ 80045d0:	4b22      	ldr	r3, [pc, #136]	; (800465c <Dio_VidInit+0xd8>)
+ 80045d2:	2200      	movs	r2, #0
+ 80045d4:	60da      	str	r2, [r3, #12]
+			break;
+ 80045d6:	e02d      	b.n	8004634 <Dio_VidInit+0xb0>
+		case Dio_GPIO_B:
+			if (ArrOfPorts[i].Level == STD_ON) {
+ 80045d8:	79fb      	ldrb	r3, [r7, #7]
+ 80045da:	4a1f      	ldr	r2, [pc, #124]	; (8004658 <Dio_VidInit+0xd4>)
+ 80045dc:	005b      	lsls	r3, r3, #1
+ 80045de:	4413      	add	r3, r2
+ 80045e0:	785b      	ldrb	r3, [r3, #1]
+ 80045e2:	2b01      	cmp	r3, #1
+ 80045e4:	d104      	bne.n	80045f0 <Dio_VidInit+0x6c>
+				GPIOB->ODR.Reg = 0x0000FFFF;
+ 80045e6:	4b1e      	ldr	r3, [pc, #120]	; (8004660 <Dio_VidInit+0xdc>)
+ 80045e8:	f64f 72ff 	movw	r2, #65535	; 0xffff
+ 80045ec:	60da      	str	r2, [r3, #12]
+			} else if (ArrOfPorts[i].Level == STD_OFF) {
+				GPIOB->ODR.Reg = 0x00000000;
+			} else {
+				/* Invalid input */
+			}
+			break;
+ 80045ee:	e023      	b.n	8004638 <Dio_VidInit+0xb4>
+			} else if (ArrOfPorts[i].Level == STD_OFF) {
+ 80045f0:	79fb      	ldrb	r3, [r7, #7]
+ 80045f2:	4a19      	ldr	r2, [pc, #100]	; (8004658 <Dio_VidInit+0xd4>)
+ 80045f4:	005b      	lsls	r3, r3, #1
+ 80045f6:	4413      	add	r3, r2
+ 80045f8:	785b      	ldrb	r3, [r3, #1]
+ 80045fa:	2b00      	cmp	r3, #0
+ 80045fc:	d11c      	bne.n	8004638 <Dio_VidInit+0xb4>
+				GPIOB->ODR.Reg = 0x00000000;
+ 80045fe:	4b18      	ldr	r3, [pc, #96]	; (8004660 <Dio_VidInit+0xdc>)
+ 8004600:	2200      	movs	r2, #0
+ 8004602:	60da      	str	r2, [r3, #12]
+			break;
+ 8004604:	e018      	b.n	8004638 <Dio_VidInit+0xb4>
+		case Dio_GPIO_C:
+			if (ArrOfPorts[i].Level == STD_ON) {
+ 8004606:	79fb      	ldrb	r3, [r7, #7]
+ 8004608:	4a13      	ldr	r2, [pc, #76]	; (8004658 <Dio_VidInit+0xd4>)
+ 800460a:	005b      	lsls	r3, r3, #1
+ 800460c:	4413      	add	r3, r2
+ 800460e:	785b      	ldrb	r3, [r3, #1]
+ 8004610:	2b01      	cmp	r3, #1
+ 8004612:	d104      	bne.n	800461e <Dio_VidInit+0x9a>
+				GPIOC->ODR.Reg = 0x0000FFFF;
+ 8004614:	4b13      	ldr	r3, [pc, #76]	; (8004664 <Dio_VidInit+0xe0>)
+ 8004616:	f64f 72ff 	movw	r2, #65535	; 0xffff
+ 800461a:	60da      	str	r2, [r3, #12]
+			} else if (ArrOfPorts[i].Level == STD_OFF) {
+				GPIOC->ODR.Reg = 0x00000000;
+			} else {
+				/* Invalid input */
+			}
+			break;
+ 800461c:	e00e      	b.n	800463c <Dio_VidInit+0xb8>
+			} else if (ArrOfPorts[i].Level == STD_OFF) {
+ 800461e:	79fb      	ldrb	r3, [r7, #7]
+ 8004620:	4a0d      	ldr	r2, [pc, #52]	; (8004658 <Dio_VidInit+0xd4>)
+ 8004622:	005b      	lsls	r3, r3, #1
+ 8004624:	4413      	add	r3, r2
+ 8004626:	785b      	ldrb	r3, [r3, #1]
+ 8004628:	2b00      	cmp	r3, #0
+ 800462a:	d107      	bne.n	800463c <Dio_VidInit+0xb8>
+				GPIOC->ODR.Reg = 0x00000000;
+ 800462c:	4b0d      	ldr	r3, [pc, #52]	; (8004664 <Dio_VidInit+0xe0>)
+ 800462e:	2200      	movs	r2, #0
+ 8004630:	60da      	str	r2, [r3, #12]
+			break;
+ 8004632:	e003      	b.n	800463c <Dio_VidInit+0xb8>
+			break;
+ 8004634:	bf00      	nop
+ 8004636:	e002      	b.n	800463e <Dio_VidInit+0xba>
+			break;
+ 8004638:	bf00      	nop
+ 800463a:	e000      	b.n	800463e <Dio_VidInit+0xba>
+			break;
+ 800463c:	bf00      	nop
+	for (uint8 i = 0; i < NUM_OF_PORT; i++) {
+ 800463e:	79fb      	ldrb	r3, [r7, #7]
+ 8004640:	3301      	adds	r3, #1
+ 8004642:	71fb      	strb	r3, [r7, #7]
+ 8004644:	79fb      	ldrb	r3, [r7, #7]
+ 8004646:	2b02      	cmp	r3, #2
+ 8004648:	d9a2      	bls.n	8004590 <Dio_VidInit+0xc>
+		}
+	}
+#if DIO_DESIGN == DIO_FREERTOS
+	xSemaphoreGive(DIO_SemArrOfPorts);
+#endif
+}
+ 800464a:	bf00      	nop
+ 800464c:	bf00      	nop
+ 800464e:	370c      	adds	r7, #12
+ 8004650:	46bd      	mov	sp, r7
+ 8004652:	bc80      	pop	{r7}
+ 8004654:	4770      	bx	lr
+ 8004656:	bf00      	nop
+ 8004658:	20000000 	.word	0x20000000
+ 800465c:	40010800 	.word	0x40010800
+ 8004660:	40010c00 	.word	0x40010c00
+ 8004664:	40011000 	.word	0x40011000
+
+08004668 <Dio_EnumSetterPin>:
+
+/* if you want to set some thing in buffer call Dio_EnuSetterPin then Dio_VidRunnable will
+ execute the configured data
+ */
+Error_State Dio_EnumSetterPin(Dio_ChannelType Copy_ChannelId,
+		Dio_LevelType Copy_Level) {
+ 8004668:	b480      	push	{r7}
+ 800466a:	b083      	sub	sp, #12
+ 800466c:	af00      	add	r7, sp, #0
+ 800466e:	4603      	mov	r3, r0
+ 8004670:	460a      	mov	r2, r1
+ 8004672:	71fb      	strb	r3, [r7, #7]
+ 8004674:	4613      	mov	r3, r2
+ 8004676:	71bb      	strb	r3, [r7, #6]
+	if (Copy_ChannelId >= Dio_A0 && Copy_ChannelId <= Dio_C14) {
+ 8004678:	79fb      	ldrb	r3, [r7, #7]
+ 800467a:	2b2e      	cmp	r3, #46	; 0x2e
+ 800467c:	d810      	bhi.n	80046a0 <Dio_EnumSetterPin+0x38>
+#if DIO_DESIGN == DIO_FREERTOS
+	xSemaphoreTake(DIO_SemArryOfPins,portMAX_DELAY);
+	xSemaphoreTake(DIO_SemArryOfActivition,portMAX_DELAY);
+#endif		
+		ArryOfPins[Copy_ChannelId] = Copy_Level;
+ 800467e:	79fb      	ldrb	r3, [r7, #7]
+ 8004680:	490a      	ldr	r1, [pc, #40]	; (80046ac <Dio_EnumSetterPin+0x44>)
+ 8004682:	79ba      	ldrb	r2, [r7, #6]
+ 8004684:	54ca      	strb	r2, [r1, r3]
+		ArryOfActivition[Copy_ChannelId][0] = STD_ON;
+ 8004686:	79fb      	ldrb	r3, [r7, #7]
+ 8004688:	4a09      	ldr	r2, [pc, #36]	; (80046b0 <Dio_EnumSetterPin+0x48>)
+ 800468a:	2101      	movs	r1, #1
+ 800468c:	f802 1013 	strb.w	r1, [r2, r3, lsl #1]
+		ArryOfActivition[Copy_ChannelId][1] = DIO_OUT;
+ 8004690:	79fb      	ldrb	r3, [r7, #7]
+ 8004692:	4a07      	ldr	r2, [pc, #28]	; (80046b0 <Dio_EnumSetterPin+0x48>)
+ 8004694:	005b      	lsls	r3, r3, #1
+ 8004696:	4413      	add	r3, r2
+ 8004698:	2202      	movs	r2, #2
+ 800469a:	705a      	strb	r2, [r3, #1]
+#if DIO_DESIGN == DIO_FREERTOS
+	xSemaphoreGive(DIO_SemArryOfPins);
+	xSemaphoreGive(DIO_SemArryOfActivition);
+#endif
+	return E_OK;
+ 800469c:	2303      	movs	r3, #3
+ 800469e:	e000      	b.n	80046a2 <Dio_EnumSetterPin+0x3a>
+	}
+	return E_INVALID_PARAMETER;
+ 80046a0:	2302      	movs	r3, #2
+}
+ 80046a2:	4618      	mov	r0, r3
+ 80046a4:	370c      	adds	r7, #12
+ 80046a6:	46bd      	mov	sp, r7
+ 80046a8:	bc80      	pop	{r7}
+ 80046aa:	4770      	bx	lr
+ 80046ac:	20000048 	.word	0x20000048
+ 80046b0:	20000078 	.word	0x20000078
+
+080046b4 <Dio_VidRunnable>:
+ *
+ *
+ *
+ */
+/* to execute the desired configuration within runtime "refresh pins" */
+void Dio_VidRunnable(void) {
+ 80046b4:	b590      	push	{r4, r7, lr}
+ 80046b6:	b083      	sub	sp, #12
+ 80046b8:	af00      	add	r7, sp, #0
+	/* GPIOA */
+	uint8 i = Dio_A0;
+ 80046ba:	2300      	movs	r3, #0
+ 80046bc:	71fb      	strb	r3, [r7, #7]
+#if DIO_DESIGN == DIO_FREERTOS
+	xSemaphoreTake(DIO_SemArryOfPins,portMAX_DELAY);
+	xSemaphoreTake(DIO_SemArryOfActivition,portMAX_DELAY);
+#endif
+	while (i <= Dio_A12) {
+ 80046be:	e022      	b.n	8004706 <Dio_VidRunnable+0x52>
+		if (ArryOfActivition[i][0] != STD_OFF) {
+ 80046c0:	79fb      	ldrb	r3, [r7, #7]
+ 80046c2:	4a50      	ldr	r2, [pc, #320]	; (8004804 <Dio_VidRunnable+0x150>)
+ 80046c4:	f812 3013 	ldrb.w	r3, [r2, r3, lsl #1]
+ 80046c8:	2b00      	cmp	r3, #0
+ 80046ca:	d019      	beq.n	8004700 <Dio_VidRunnable+0x4c>
+			if (ArryOfActivition[i][1] == DIO_OUT) {
+ 80046cc:	79fb      	ldrb	r3, [r7, #7]
+ 80046ce:	4a4d      	ldr	r2, [pc, #308]	; (8004804 <Dio_VidRunnable+0x150>)
+ 80046d0:	005b      	lsls	r3, r3, #1
+ 80046d2:	4413      	add	r3, r2
+ 80046d4:	785b      	ldrb	r3, [r3, #1]
+ 80046d6:	2b02      	cmp	r3, #2
+ 80046d8:	d108      	bne.n	80046ec <Dio_VidRunnable+0x38>
+				Dio_WriteChannel(GPIOA, i, ArryOfPins[i]);
+ 80046da:	79fb      	ldrb	r3, [r7, #7]
+ 80046dc:	4a4a      	ldr	r2, [pc, #296]	; (8004808 <Dio_VidRunnable+0x154>)
+ 80046de:	5cd2      	ldrb	r2, [r2, r3]
+ 80046e0:	79fb      	ldrb	r3, [r7, #7]
+ 80046e2:	4619      	mov	r1, r3
+ 80046e4:	4849      	ldr	r0, [pc, #292]	; (800480c <Dio_VidRunnable+0x158>)
+ 80046e6:	f000 f8ae 	bl	8004846 <Dio_WriteChannel>
+ 80046ea:	e009      	b.n	8004700 <Dio_VidRunnable+0x4c>
+			} else {
+				ArryOfPins[i] = Dio_ReadChannel(GPIOA,i);
+ 80046ec:	79fc      	ldrb	r4, [r7, #7]
+ 80046ee:	79fb      	ldrb	r3, [r7, #7]
+ 80046f0:	4619      	mov	r1, r3
+ 80046f2:	4846      	ldr	r0, [pc, #280]	; (800480c <Dio_VidRunnable+0x158>)
+ 80046f4:	f000 f890 	bl	8004818 <Dio_ReadChannel>
+ 80046f8:	4603      	mov	r3, r0
+ 80046fa:	461a      	mov	r2, r3
+ 80046fc:	4b42      	ldr	r3, [pc, #264]	; (8004808 <Dio_VidRunnable+0x154>)
+ 80046fe:	551a      	strb	r2, [r3, r4]
+			}
+		}
+		i++;
+ 8004700:	79fb      	ldrb	r3, [r7, #7]
+ 8004702:	3301      	adds	r3, #1
+ 8004704:	71fb      	strb	r3, [r7, #7]
+	while (i <= Dio_A12) {
+ 8004706:	79fb      	ldrb	r3, [r7, #7]
+ 8004708:	2b0c      	cmp	r3, #12
+ 800470a:	d9d9      	bls.n	80046c0 <Dio_VidRunnable+0xc>
+	}
+
+	if (ArryOfActivition[Dio_A15][0] != STD_OFF) {
+ 800470c:	4b3d      	ldr	r3, [pc, #244]	; (8004804 <Dio_VidRunnable+0x150>)
+ 800470e:	7f9b      	ldrb	r3, [r3, #30]
+ 8004710:	2b00      	cmp	r3, #0
+ 8004712:	d013      	beq.n	800473c <Dio_VidRunnable+0x88>
+		if (ArryOfActivition[Dio_A15][1] == DIO_OUT) {
+ 8004714:	4b3b      	ldr	r3, [pc, #236]	; (8004804 <Dio_VidRunnable+0x150>)
+ 8004716:	7fdb      	ldrb	r3, [r3, #31]
+ 8004718:	2b02      	cmp	r3, #2
+ 800471a:	d107      	bne.n	800472c <Dio_VidRunnable+0x78>
+			Dio_WriteChannel(GPIOA, Dio_A15, ArryOfPins[Dio_A15]);
+ 800471c:	4b3a      	ldr	r3, [pc, #232]	; (8004808 <Dio_VidRunnable+0x154>)
+ 800471e:	7bdb      	ldrb	r3, [r3, #15]
+ 8004720:	461a      	mov	r2, r3
+ 8004722:	210f      	movs	r1, #15
+ 8004724:	4839      	ldr	r0, [pc, #228]	; (800480c <Dio_VidRunnable+0x158>)
+ 8004726:	f000 f88e 	bl	8004846 <Dio_WriteChannel>
+ 800472a:	e007      	b.n	800473c <Dio_VidRunnable+0x88>
+		} else {
+			ArryOfPins[Dio_A15] = Dio_ReadChannel(GPIOA, Dio_A15);
+ 800472c:	210f      	movs	r1, #15
+ 800472e:	4837      	ldr	r0, [pc, #220]	; (800480c <Dio_VidRunnable+0x158>)
+ 8004730:	f000 f872 	bl	8004818 <Dio_ReadChannel>
+ 8004734:	4603      	mov	r3, r0
+ 8004736:	461a      	mov	r2, r3
+ 8004738:	4b33      	ldr	r3, [pc, #204]	; (8004808 <Dio_VidRunnable+0x154>)
+ 800473a:	73da      	strb	r2, [r3, #15]
+		}
+	}
+
+	/* GPIOB */
+	i = Dio_B0;
+ 800473c:	2310      	movs	r3, #16
+ 800473e:	71fb      	strb	r3, [r7, #7]
+	while (i <= Dio_B15) {
+ 8004740:	e028      	b.n	8004794 <Dio_VidRunnable+0xe0>
+		if (ArryOfActivition[i][0] != STD_OFF) {
+ 8004742:	79fb      	ldrb	r3, [r7, #7]
+ 8004744:	4a2f      	ldr	r2, [pc, #188]	; (8004804 <Dio_VidRunnable+0x150>)
+ 8004746:	f812 3013 	ldrb.w	r3, [r2, r3, lsl #1]
+ 800474a:	2b00      	cmp	r3, #0
+ 800474c:	d01f      	beq.n	800478e <Dio_VidRunnable+0xda>
+			if (ArryOfActivition[i][1] == DIO_OUT) {
+ 800474e:	79fb      	ldrb	r3, [r7, #7]
+ 8004750:	4a2c      	ldr	r2, [pc, #176]	; (8004804 <Dio_VidRunnable+0x150>)
+ 8004752:	005b      	lsls	r3, r3, #1
+ 8004754:	4413      	add	r3, r2
+ 8004756:	785b      	ldrb	r3, [r3, #1]
+ 8004758:	2b02      	cmp	r3, #2
+ 800475a:	d10b      	bne.n	8004774 <Dio_VidRunnable+0xc0>
+				Dio_WriteChannel(GPIOB, (i & ~(0x10)) , ArryOfPins[i]);
+ 800475c:	79fb      	ldrb	r3, [r7, #7]
+ 800475e:	f023 0310 	bic.w	r3, r3, #16
+ 8004762:	b2d9      	uxtb	r1, r3
+ 8004764:	79fb      	ldrb	r3, [r7, #7]
+ 8004766:	4a28      	ldr	r2, [pc, #160]	; (8004808 <Dio_VidRunnable+0x154>)
+ 8004768:	5cd3      	ldrb	r3, [r2, r3]
+ 800476a:	461a      	mov	r2, r3
+ 800476c:	4828      	ldr	r0, [pc, #160]	; (8004810 <Dio_VidRunnable+0x15c>)
+ 800476e:	f000 f86a 	bl	8004846 <Dio_WriteChannel>
+ 8004772:	e00c      	b.n	800478e <Dio_VidRunnable+0xda>
+			} else {
+				ArryOfPins[i] = Dio_ReadChannel(GPIOB, (i & ~(0x10)));
+ 8004774:	79fb      	ldrb	r3, [r7, #7]
+ 8004776:	f023 0310 	bic.w	r3, r3, #16
+ 800477a:	b2db      	uxtb	r3, r3
+ 800477c:	79fc      	ldrb	r4, [r7, #7]
+ 800477e:	4619      	mov	r1, r3
+ 8004780:	4823      	ldr	r0, [pc, #140]	; (8004810 <Dio_VidRunnable+0x15c>)
+ 8004782:	f000 f849 	bl	8004818 <Dio_ReadChannel>
+ 8004786:	4603      	mov	r3, r0
+ 8004788:	461a      	mov	r2, r3
+ 800478a:	4b1f      	ldr	r3, [pc, #124]	; (8004808 <Dio_VidRunnable+0x154>)
+ 800478c:	551a      	strb	r2, [r3, r4]
+			}
+		}
+		i++;
+ 800478e:	79fb      	ldrb	r3, [r7, #7]
+ 8004790:	3301      	adds	r3, #1
+ 8004792:	71fb      	strb	r3, [r7, #7]
+	while (i <= Dio_B15) {
+ 8004794:	79fb      	ldrb	r3, [r7, #7]
+ 8004796:	2b1f      	cmp	r3, #31
+ 8004798:	d9d3      	bls.n	8004742 <Dio_VidRunnable+0x8e>
+	}
+
+	i = Dio_C13;
+ 800479a:	232d      	movs	r3, #45	; 0x2d
+ 800479c:	71fb      	strb	r3, [r7, #7]
+	while (i <= Dio_C14) {
+ 800479e:	e028      	b.n	80047f2 <Dio_VidRunnable+0x13e>
+		if (ArryOfActivition[i][0] != STD_OFF) {
+ 80047a0:	79fb      	ldrb	r3, [r7, #7]
+ 80047a2:	4a18      	ldr	r2, [pc, #96]	; (8004804 <Dio_VidRunnable+0x150>)
+ 80047a4:	f812 3013 	ldrb.w	r3, [r2, r3, lsl #1]
+ 80047a8:	2b00      	cmp	r3, #0
+ 80047aa:	d01f      	beq.n	80047ec <Dio_VidRunnable+0x138>
+			if (ArryOfActivition[i][1] == DIO_OUT) {
+ 80047ac:	79fb      	ldrb	r3, [r7, #7]
+ 80047ae:	4a15      	ldr	r2, [pc, #84]	; (8004804 <Dio_VidRunnable+0x150>)
+ 80047b0:	005b      	lsls	r3, r3, #1
+ 80047b2:	4413      	add	r3, r2
+ 80047b4:	785b      	ldrb	r3, [r3, #1]
+ 80047b6:	2b02      	cmp	r3, #2
+ 80047b8:	d10b      	bne.n	80047d2 <Dio_VidRunnable+0x11e>
+				Dio_WriteChannel(GPIOC, (i & ~(0x20)), ArryOfPins[i]);
+ 80047ba:	79fb      	ldrb	r3, [r7, #7]
+ 80047bc:	f023 0320 	bic.w	r3, r3, #32
+ 80047c0:	b2d9      	uxtb	r1, r3
+ 80047c2:	79fb      	ldrb	r3, [r7, #7]
+ 80047c4:	4a10      	ldr	r2, [pc, #64]	; (8004808 <Dio_VidRunnable+0x154>)
+ 80047c6:	5cd3      	ldrb	r3, [r2, r3]
+ 80047c8:	461a      	mov	r2, r3
+ 80047ca:	4812      	ldr	r0, [pc, #72]	; (8004814 <Dio_VidRunnable+0x160>)
+ 80047cc:	f000 f83b 	bl	8004846 <Dio_WriteChannel>
+ 80047d0:	e00c      	b.n	80047ec <Dio_VidRunnable+0x138>
+			} else {
+				ArryOfPins[i] = Dio_ReadChannel(GPIOC, (i & ~(0x20)));
+ 80047d2:	79fb      	ldrb	r3, [r7, #7]
+ 80047d4:	f023 0320 	bic.w	r3, r3, #32
+ 80047d8:	b2db      	uxtb	r3, r3
+ 80047da:	79fc      	ldrb	r4, [r7, #7]
+ 80047dc:	4619      	mov	r1, r3
+ 80047de:	480d      	ldr	r0, [pc, #52]	; (8004814 <Dio_VidRunnable+0x160>)
+ 80047e0:	f000 f81a 	bl	8004818 <Dio_ReadChannel>
+ 80047e4:	4603      	mov	r3, r0
+ 80047e6:	461a      	mov	r2, r3
+ 80047e8:	4b07      	ldr	r3, [pc, #28]	; (8004808 <Dio_VidRunnable+0x154>)
+ 80047ea:	551a      	strb	r2, [r3, r4]
+			}
+		}
+		i++;
+ 80047ec:	79fb      	ldrb	r3, [r7, #7]
+ 80047ee:	3301      	adds	r3, #1
+ 80047f0:	71fb      	strb	r3, [r7, #7]
+	while (i <= Dio_C14) {
+ 80047f2:	79fb      	ldrb	r3, [r7, #7]
+ 80047f4:	2b2e      	cmp	r3, #46	; 0x2e
+ 80047f6:	d9d3      	bls.n	80047a0 <Dio_VidRunnable+0xec>
+	}
+#if DIO_DESIGN == DIO_FREERTOS
+	xSemaphoreGive(DIO_SemArryOfPins);
+	xSemaphoreGive(DIO_SemArryOfActivition);
+#endif
+}
+ 80047f8:	bf00      	nop
+ 80047fa:	bf00      	nop
+ 80047fc:	370c      	adds	r7, #12
+ 80047fe:	46bd      	mov	sp, r7
+ 8004800:	bd90      	pop	{r4, r7, pc}
+ 8004802:	bf00      	nop
+ 8004804:	20000078 	.word	0x20000078
+ 8004808:	20000048 	.word	0x20000048
+ 800480c:	40010800 	.word	0x40010800
+ 8004810:	40010c00 	.word	0x40010c00
+ 8004814:	40011000 	.word	0x40011000
+
+08004818 <Dio_ReadChannel>:
+/*
+ Input  : Dio_ChannelType
+ output : Dio_LevelType
+ description :
+ */
+Dio_LevelType Dio_ReadChannel(volatile GPIOX_REG *GPIOX, Dio_ChannelType ChannelId) {
+ 8004818:	b480      	push	{r7}
+ 800481a:	b085      	sub	sp, #20
+ 800481c:	af00      	add	r7, sp, #0
+ 800481e:	6078      	str	r0, [r7, #4]
+ 8004820:	460b      	mov	r3, r1
+ 8004822:	70fb      	strb	r3, [r7, #3]
+	uint32 Local_IDR = GPIOX->IDR.Reg;
+ 8004824:	687b      	ldr	r3, [r7, #4]
+ 8004826:	689b      	ldr	r3, [r3, #8]
+ 8004828:	60fb      	str	r3, [r7, #12]
+	Local_IDR = ((Local_IDR >> (ChannelId)) & STD_HIGH);
+ 800482a:	78fb      	ldrb	r3, [r7, #3]
+ 800482c:	68fa      	ldr	r2, [r7, #12]
+ 800482e:	fa22 f303 	lsr.w	r3, r2, r3
+ 8004832:	f003 0301 	and.w	r3, r3, #1
+ 8004836:	60fb      	str	r3, [r7, #12]
+	return Local_IDR;
+ 8004838:	68fb      	ldr	r3, [r7, #12]
+ 800483a:	b2db      	uxtb	r3, r3
+}
+ 800483c:	4618      	mov	r0, r3
+ 800483e:	3714      	adds	r7, #20
+ 8004840:	46bd      	mov	sp, r7
+ 8004842:	bc80      	pop	{r7}
+ 8004844:	4770      	bx	lr
+
+08004846 <Dio_WriteChannel>:
+ Input  : Dio_ChannelType
+ output : Dio_LevelType
+ description :
+ */
+void Dio_WriteChannel(volatile GPIOX_REG *GPIOX, Dio_ChannelType ChannelId,
+		Dio_LevelType Level) {
+ 8004846:	b580      	push	{r7, lr}
+ 8004848:	b084      	sub	sp, #16
+ 800484a:	af00      	add	r7, sp, #0
+ 800484c:	6078      	str	r0, [r7, #4]
+ 800484e:	460b      	mov	r3, r1
+ 8004850:	70fb      	strb	r3, [r7, #3]
+ 8004852:	4613      	mov	r3, r2
+ 8004854:	70bb      	strb	r3, [r7, #2]
+	uint32 Local_Pin = (1 << ChannelId);
+ 8004856:	78fb      	ldrb	r3, [r7, #3]
+ 8004858:	2201      	movs	r2, #1
+ 800485a:	fa02 f303 	lsl.w	r3, r2, r3
+ 800485e:	60fb      	str	r3, [r7, #12]
+
+	if (Level == STD_HIGH) {
+ 8004860:	78bb      	ldrb	r3, [r7, #2]
+ 8004862:	2b01      	cmp	r3, #1
+ 8004864:	d103      	bne.n	800486e <Dio_WriteChannel+0x28>
+		GPIOX->BSRR.Reg = Local_Pin;
+ 8004866:	687b      	ldr	r3, [r7, #4]
+ 8004868:	68fa      	ldr	r2, [r7, #12]
+ 800486a:	611a      	str	r2, [r3, #16]
+		GPIOX->BRR.Reg = Local_Pin;
+	}
+	else {
+		Det_ReportError(MODULE_ID, Dio_WriteChannel_ID, DIO_E_PARAM_INVALID_CHANNEL_ID);
+	}
+}
+ 800486c:	e00b      	b.n	8004886 <Dio_WriteChannel+0x40>
+	} else if (Level == STD_LOW) {
+ 800486e:	78bb      	ldrb	r3, [r7, #2]
+ 8004870:	2b00      	cmp	r3, #0
+ 8004872:	d103      	bne.n	800487c <Dio_WriteChannel+0x36>
+		GPIOX->BRR.Reg = Local_Pin;
+ 8004874:	687b      	ldr	r3, [r7, #4]
+ 8004876:	68fa      	ldr	r2, [r7, #12]
+ 8004878:	615a      	str	r2, [r3, #20]
+}
+ 800487a:	e004      	b.n	8004886 <Dio_WriteChannel+0x40>
+		Det_ReportError(MODULE_ID, Dio_WriteChannel_ID, DIO_E_PARAM_INVALID_CHANNEL_ID);
+ 800487c:	220a      	movs	r2, #10
+ 800487e:	2101      	movs	r1, #1
+ 8004880:	2078      	movs	r0, #120	; 0x78
+ 8004882:	f7ff fe75 	bl	8004570 <Det_ReportError>
+}
+ 8004886:	bf00      	nop
+ 8004888:	3710      	adds	r7, #16
+ 800488a:	46bd      	mov	sp, r7
+ 800488c:	bd80      	pop	{r7, pc}
+	...
+
+08004890 <Mcu_Init>:
+ *
+ *
+ *
+ *
+ */
+void   Mcu_Init () {
+ 8004890:	b580      	push	{r7, lr}
+ 8004892:	b084      	sub	sp, #16
+ 8004894:	af00      	add	r7, sp, #0
+	/* check on coming pointer */
+	if (NULL_PTR == ConfigPtr){
+ 8004896:	4b30      	ldr	r3, [pc, #192]	; (8004958 <Mcu_Init+0xc8>)
+ 8004898:	681b      	ldr	r3, [r3, #0]
+ 800489a:	2b00      	cmp	r3, #0
+ 800489c:	d104      	bne.n	80048a8 <Mcu_Init+0x18>
+		Det_ReportError(MODULE_ID, Mcu_Init_ID, MCU_E_PARAM_POINTER);
+ 800489e:	2210      	movs	r2, #16
+ 80048a0:	2101      	movs	r1, #1
+ 80048a2:	2065      	movs	r0, #101	; 0x65
+ 80048a4:	f7ff fe64 	bl	8004570 <Det_ReportError>
+	MCU_SemPerpherialsAHB  = xSemaphoreCreateBinary();
+	xSemaphoreGive(MCU_SemPerpherialsAHB);
+#endif
+
+	/* to select HSE[16] */
+	uint32 Local_RCC_Value = ConfigPtr->CLOCK_SYS | ( ConfigPtr->HSITRIM << 3 ) ;
+ 80048a8:	4b2b      	ldr	r3, [pc, #172]	; (8004958 <Mcu_Init+0xc8>)
+ 80048aa:	681b      	ldr	r3, [r3, #0]
+ 80048ac:	681b      	ldr	r3, [r3, #0]
+ 80048ae:	4a2a      	ldr	r2, [pc, #168]	; (8004958 <Mcu_Init+0xc8>)
+ 80048b0:	6812      	ldr	r2, [r2, #0]
+ 80048b2:	7d52      	ldrb	r2, [r2, #21]
+ 80048b4:	00d2      	lsls	r2, r2, #3
+ 80048b6:	4313      	orrs	r3, r2
+ 80048b8:	60bb      	str	r3, [r7, #8]
+	RCC->CR      = Local_RCC_Value ;
+ 80048ba:	4a28      	ldr	r2, [pc, #160]	; (800495c <Mcu_Init+0xcc>)
+ 80048bc:	68bb      	ldr	r3, [r7, #8]
+ 80048be:	6013      	str	r3, [r2, #0]
+
+	/* to check that the clock is stabled  :
+	 PLLRDY    or   HSERDY   or   HSIRDY
+	 */
+	uint32 LOCAL_Clock_Flag = ( ConfigPtr->CLOCK_SYS << 1 ) ;  /*  to check on one in the bit of flag  */
+ 80048c0:	4b25      	ldr	r3, [pc, #148]	; (8004958 <Mcu_Init+0xc8>)
+ 80048c2:	681b      	ldr	r3, [r3, #0]
+ 80048c4:	681b      	ldr	r3, [r3, #0]
+ 80048c6:	005b      	lsls	r3, r3, #1
+ 80048c8:	607b      	str	r3, [r7, #4]
+	uint16 LOCAL_Time_limit = TIMEOUT_ROOF ;
+ 80048ca:	f44f 737a 	mov.w	r3, #1000	; 0x3e8
+ 80048ce:	81fb      	strh	r3, [r7, #14]
+
+	while ( (LOCAL_Clock_Flag & RCC->CR) && (0 == LOCAL_Time_limit))
+ 80048d0:	e002      	b.n	80048d8 <Mcu_Init+0x48>
+	{
+		LOCAL_Time_limit--;
+ 80048d2:	89fb      	ldrh	r3, [r7, #14]
+ 80048d4:	3b01      	subs	r3, #1
+ 80048d6:	81fb      	strh	r3, [r7, #14]
+	while ( (LOCAL_Clock_Flag & RCC->CR) && (0 == LOCAL_Time_limit))
+ 80048d8:	4b20      	ldr	r3, [pc, #128]	; (800495c <Mcu_Init+0xcc>)
+ 80048da:	681a      	ldr	r2, [r3, #0]
+ 80048dc:	687b      	ldr	r3, [r7, #4]
+ 80048de:	4013      	ands	r3, r2
+ 80048e0:	2b00      	cmp	r3, #0
+ 80048e2:	d002      	beq.n	80048ea <Mcu_Init+0x5a>
+ 80048e4:	89fb      	ldrh	r3, [r7, #14]
+ 80048e6:	2b00      	cmp	r3, #0
+ 80048e8:	d0f3      	beq.n	80048d2 <Mcu_Init+0x42>
+	}
+
+	if (0 == LOCAL_Time_limit){
+ 80048ea:	89fb      	ldrh	r3, [r7, #14]
+ 80048ec:	2b00      	cmp	r3, #0
+ 80048ee:	d104      	bne.n	80048fa <Mcu_Init+0x6a>
+		Det_ReportError(MODULE_ID, Mcu_Init_ID, MCU_E_TIMEOUT);
+ 80048f0:	2212      	movs	r2, #18
+ 80048f2:	2101      	movs	r1, #1
+ 80048f4:	2065      	movs	r0, #101	; 0x65
+ 80048f6:	f7ff fe3b 	bl	8004570 <Det_ReportError>
+	}
+
+	/* to turn off VCC in PIN out that used in HSE to get clock */
+#if   HSE == HSE_CRSTYAL
+	RCC->CR = RCC->CR & ~(1<<(HSE_BYP));
+ 80048fa:	4b18      	ldr	r3, [pc, #96]	; (800495c <Mcu_Init+0xcc>)
+ 80048fc:	681b      	ldr	r3, [r3, #0]
+ 80048fe:	4a17      	ldr	r2, [pc, #92]	; (800495c <Mcu_Init+0xcc>)
+ 8004900:	f423 2380 	bic.w	r3, r3, #262144	; 0x40000
+ 8004904:	6013      	str	r3, [r2, #0]
+#elif HSE == HSE_RC
+	RCC->CR = RCC->CR | 1<<(HSE_BYP);
+#endif
+
+#if CSS_CFG == CSS_OFF
+	RCC->CR = RCC->CR & ~(1<<(CSSON));
+ 8004906:	4b15      	ldr	r3, [pc, #84]	; (800495c <Mcu_Init+0xcc>)
+ 8004908:	681b      	ldr	r3, [r3, #0]
+ 800490a:	4a14      	ldr	r2, [pc, #80]	; (800495c <Mcu_Init+0xcc>)
+ 800490c:	f423 2300 	bic.w	r3, r3, #524288	; 0x80000
+ 8004910:	6013      	str	r3, [r2, #0]
+	/* to select SW[1:0]
+	 00: HSI selected as system clock
+	 01: HSE selected as system clock
+     10: PLL selected as system clock
+	  */
+	uint32 Local_RCC_CFGR = ConfigPtr->PLL_MUL_NUMBER
+ 8004912:	4b11      	ldr	r3, [pc, #68]	; (8004958 <Mcu_Init+0xc8>)
+ 8004914:	681b      	ldr	r3, [r3, #0]
+ 8004916:	685a      	ldr	r2, [r3, #4]
+			| ConfigPtr->PLL_ENTRY_CLOCK | ConfigPtr->ADC_PRESCALAR_
+ 8004918:	4b0f      	ldr	r3, [pc, #60]	; (8004958 <Mcu_Init+0xc8>)
+ 800491a:	681b      	ldr	r3, [r3, #0]
+ 800491c:	689b      	ldr	r3, [r3, #8]
+ 800491e:	4313      	orrs	r3, r2
+ 8004920:	4a0d      	ldr	r2, [pc, #52]	; (8004958 <Mcu_Init+0xc8>)
+ 8004922:	6812      	ldr	r2, [r2, #0]
+ 8004924:	8992      	ldrh	r2, [r2, #12]
+ 8004926:	4313      	orrs	r3, r2
+			| ConfigPtr->APB2_PRESCALAR_ | ConfigPtr->APB1_PRESCALAR_
+ 8004928:	4a0b      	ldr	r2, [pc, #44]	; (8004958 <Mcu_Init+0xc8>)
+ 800492a:	6812      	ldr	r2, [r2, #0]
+ 800492c:	89d2      	ldrh	r2, [r2, #14]
+ 800492e:	4313      	orrs	r3, r2
+ 8004930:	4a09      	ldr	r2, [pc, #36]	; (8004958 <Mcu_Init+0xc8>)
+ 8004932:	6812      	ldr	r2, [r2, #0]
+ 8004934:	8a12      	ldrh	r2, [r2, #16]
+ 8004936:	4313      	orrs	r3, r2
+			| ConfigPtr->AHB_PRESCALAR_ | ConfigPtr->SW_ENABLE_CLOCK;
+ 8004938:	4a07      	ldr	r2, [pc, #28]	; (8004958 <Mcu_Init+0xc8>)
+ 800493a:	6812      	ldr	r2, [r2, #0]
+ 800493c:	8a52      	ldrh	r2, [r2, #18]
+ 800493e:	4313      	orrs	r3, r2
+ 8004940:	4a05      	ldr	r2, [pc, #20]	; (8004958 <Mcu_Init+0xc8>)
+ 8004942:	6812      	ldr	r2, [r2, #0]
+ 8004944:	7d12      	ldrb	r2, [r2, #20]
+	uint32 Local_RCC_CFGR = ConfigPtr->PLL_MUL_NUMBER
+ 8004946:	4313      	orrs	r3, r2
+ 8004948:	603b      	str	r3, [r7, #0]
+	RCC->CFGR    = Local_RCC_CFGR ;
+ 800494a:	4a04      	ldr	r2, [pc, #16]	; (800495c <Mcu_Init+0xcc>)
+ 800494c:	683b      	ldr	r3, [r7, #0]
+ 800494e:	6053      	str	r3, [r2, #4]
+
+#if MCU_DESIGN == MCU_FREERTOS
+	xSemaphoreGive(MCU_SemConfig_Clock);
+#endif
+}
+ 8004950:	bf00      	nop
+ 8004952:	3710      	adds	r7, #16
+ 8004954:	46bd      	mov	sp, r7
+ 8004956:	bd80      	pop	{r7, pc}
+ 8004958:	20000020 	.word	0x20000020
+ 800495c:	40021000 	.word	0x40021000
+
+08004960 <Mcu_EnumSetPerAPB2>:
+ *
+ *
+ *
+ */
+
+Error_State       Mcu_EnumSetPerAPB2(BUS_PERPHERIALS Mcu_Per ) {
+ 8004960:	b480      	push	{r7}
+ 8004962:	b083      	sub	sp, #12
+ 8004964:	af00      	add	r7, sp, #0
+ 8004966:	6078      	str	r0, [r7, #4]
+#if MCU_DESIGN == MCU_FREERTOS
+	xSemaphoreTake(MCU_SemPerpherialsAPB2,portMAX_DELAY);
+#endif
+	if (Mcu_Per >= APB2_PER_AFIO  && Mcu_Per <= APB2_PER_TIM11){
+ 8004968:	687b      	ldr	r3, [r7, #4]
+ 800496a:	f1b3 4f00 	cmp.w	r3, #2147483648	; 0x80000000
+ 800496e:	d90b      	bls.n	8004988 <Mcu_EnumSetPerAPB2+0x28>
+ 8004970:	687b      	ldr	r3, [r7, #4]
+ 8004972:	4a08      	ldr	r2, [pc, #32]	; (8004994 <Mcu_EnumSetPerAPB2+0x34>)
+ 8004974:	4293      	cmp	r3, r2
+ 8004976:	d807      	bhi.n	8004988 <Mcu_EnumSetPerAPB2+0x28>
+		PerpherialsAPB2 |= Mcu_Per ;
+ 8004978:	4b07      	ldr	r3, [pc, #28]	; (8004998 <Mcu_EnumSetPerAPB2+0x38>)
+ 800497a:	681a      	ldr	r2, [r3, #0]
+ 800497c:	687b      	ldr	r3, [r7, #4]
+ 800497e:	4313      	orrs	r3, r2
+ 8004980:	4a05      	ldr	r2, [pc, #20]	; (8004998 <Mcu_EnumSetPerAPB2+0x38>)
+ 8004982:	6013      	str	r3, [r2, #0]
+	return E_OK;
+ 8004984:	2303      	movs	r3, #3
+ 8004986:	e000      	b.n	800498a <Mcu_EnumSetPerAPB2+0x2a>
+	}
+#if MCU_DESIGN == MCU_FREERTOS
+	xSemaphoreGive(MCU_SemPerpherialsAPB2);
+#endif
+	
+	return E_NOT_OK ;
+ 8004988:	2301      	movs	r3, #1
+}
+ 800498a:	4618      	mov	r0, r3
+ 800498c:	370c      	adds	r7, #12
+ 800498e:	46bd      	mov	sp, r7
+ 8004990:	bc80      	pop	{r7}
+ 8004992:	4770      	bx	lr
+ 8004994:	80200000 	.word	0x80200000
+ 8004998:	200000dc 	.word	0x200000dc
+
+0800499c <Mcu_VidRunnable>:
+ *
+ *
+ *
+ *
+ */
+void  Mcu_VidRunnable (void){
+ 800499c:	b580      	push	{r7, lr}
+ 800499e:	af00      	add	r7, sp, #0
+	if (PerpherialsAPB1 != NULL){
+ 80049a0:	4b0e      	ldr	r3, [pc, #56]	; (80049dc <Mcu_VidRunnable+0x40>)
+ 80049a2:	681b      	ldr	r3, [r3, #0]
+ 80049a4:	2b00      	cmp	r3, #0
+ 80049a6:	d004      	beq.n	80049b2 <Mcu_VidRunnable+0x16>
+		Mcu_SetMode(PerpherialsAPB1);
+ 80049a8:	4b0c      	ldr	r3, [pc, #48]	; (80049dc <Mcu_VidRunnable+0x40>)
+ 80049aa:	681b      	ldr	r3, [r3, #0]
+ 80049ac:	4618      	mov	r0, r3
+ 80049ae:	f000 f81b 	bl	80049e8 <Mcu_SetMode>
+	}
+
+	if (PerpherialsAPB2 != NULL){
+ 80049b2:	4b0b      	ldr	r3, [pc, #44]	; (80049e0 <Mcu_VidRunnable+0x44>)
+ 80049b4:	681b      	ldr	r3, [r3, #0]
+ 80049b6:	2b00      	cmp	r3, #0
+ 80049b8:	d004      	beq.n	80049c4 <Mcu_VidRunnable+0x28>
+		Mcu_SetMode(PerpherialsAPB2);
+ 80049ba:	4b09      	ldr	r3, [pc, #36]	; (80049e0 <Mcu_VidRunnable+0x44>)
+ 80049bc:	681b      	ldr	r3, [r3, #0]
+ 80049be:	4618      	mov	r0, r3
+ 80049c0:	f000 f812 	bl	80049e8 <Mcu_SetMode>
+	}
+
+	if (PerpherialsAHB  != NULL){
+ 80049c4:	4b07      	ldr	r3, [pc, #28]	; (80049e4 <Mcu_VidRunnable+0x48>)
+ 80049c6:	681b      	ldr	r3, [r3, #0]
+ 80049c8:	2b00      	cmp	r3, #0
+ 80049ca:	d004      	beq.n	80049d6 <Mcu_VidRunnable+0x3a>
+		Mcu_SetMode(PerpherialsAHB) ;
+ 80049cc:	4b05      	ldr	r3, [pc, #20]	; (80049e4 <Mcu_VidRunnable+0x48>)
+ 80049ce:	681b      	ldr	r3, [r3, #0]
+ 80049d0:	4618      	mov	r0, r3
+ 80049d2:	f000 f809 	bl	80049e8 <Mcu_SetMode>
+	}
+}
+ 80049d6:	bf00      	nop
+ 80049d8:	bd80      	pop	{r7, pc}
+ 80049da:	bf00      	nop
+ 80049dc:	200000d8 	.word	0x200000d8
+ 80049e0:	200000dc 	.word	0x200000dc
+ 80049e4:	200000e0 	.word	0x200000e0
+
+080049e8 <Mcu_SetMode>:
+ *
+ *
+ *
+ *
+ */
+void Mcu_SetMode (Mcu_ModeType McuMode){
+ 80049e8:	b580      	push	{r7, lr}
+ 80049ea:	b082      	sub	sp, #8
+ 80049ec:	af00      	add	r7, sp, #0
+ 80049ee:	6078      	str	r0, [r7, #4]
+	if ( McuMode >= APB1_PER_TIM2  && McuMode <= APB1_PER_DAC ){
+ 80049f0:	687b      	ldr	r3, [r7, #4]
+ 80049f2:	2b00      	cmp	r3, #0
+ 80049f4:	d00a      	beq.n	8004a0c <Mcu_SetMode+0x24>
+ 80049f6:	687b      	ldr	r3, [r7, #4]
+ 80049f8:	f1b3 5f00 	cmp.w	r3, #536870912	; 0x20000000
+ 80049fc:	d806      	bhi.n	8004a0c <Mcu_SetMode+0x24>
+		RCC->APB1ENR  |= McuMode ;
+ 80049fe:	4b1b      	ldr	r3, [pc, #108]	; (8004a6c <Mcu_SetMode+0x84>)
+ 8004a00:	69da      	ldr	r2, [r3, #28]
+ 8004a02:	491a      	ldr	r1, [pc, #104]	; (8004a6c <Mcu_SetMode+0x84>)
+ 8004a04:	687b      	ldr	r3, [r7, #4]
+ 8004a06:	4313      	orrs	r3, r2
+ 8004a08:	61cb      	str	r3, [r1, #28]
+ 8004a0a:	e02b      	b.n	8004a64 <Mcu_SetMode+0x7c>
+	}
+	else if (McuMode >= APB2_PER_AFIO  && McuMode <= APB2_PER_TIM11){
+ 8004a0c:	687b      	ldr	r3, [r7, #4]
+ 8004a0e:	f1b3 4f00 	cmp.w	r3, #2147483648	; 0x80000000
+ 8004a12:	d90e      	bls.n	8004a32 <Mcu_SetMode+0x4a>
+ 8004a14:	687b      	ldr	r3, [r7, #4]
+ 8004a16:	4a16      	ldr	r2, [pc, #88]	; (8004a70 <Mcu_SetMode+0x88>)
+ 8004a18:	4293      	cmp	r3, r2
+ 8004a1a:	d80a      	bhi.n	8004a32 <Mcu_SetMode+0x4a>
+		McuMode = McuMode & ~(1<<(31));
+ 8004a1c:	687b      	ldr	r3, [r7, #4]
+ 8004a1e:	f023 4300 	bic.w	r3, r3, #2147483648	; 0x80000000
+ 8004a22:	607b      	str	r3, [r7, #4]
+		RCC->APB2ENR  |= McuMode ;
+ 8004a24:	4b11      	ldr	r3, [pc, #68]	; (8004a6c <Mcu_SetMode+0x84>)
+ 8004a26:	699a      	ldr	r2, [r3, #24]
+ 8004a28:	4910      	ldr	r1, [pc, #64]	; (8004a6c <Mcu_SetMode+0x84>)
+ 8004a2a:	687b      	ldr	r3, [r7, #4]
+ 8004a2c:	4313      	orrs	r3, r2
+ 8004a2e:	618b      	str	r3, [r1, #24]
+ 8004a30:	e018      	b.n	8004a64 <Mcu_SetMode+0x7c>
+	}
+	else if (McuMode >= AHB_PER_DMA_1  && McuMode <= AHB_PER_SDIO){
+ 8004a32:	687b      	ldr	r3, [r7, #4]
+ 8004a34:	f1b3 4f80 	cmp.w	r3, #1073741824	; 0x40000000
+ 8004a38:	d90e      	bls.n	8004a58 <Mcu_SetMode+0x70>
+ 8004a3a:	687b      	ldr	r3, [r7, #4]
+ 8004a3c:	4a0d      	ldr	r2, [pc, #52]	; (8004a74 <Mcu_SetMode+0x8c>)
+ 8004a3e:	4293      	cmp	r3, r2
+ 8004a40:	d80a      	bhi.n	8004a58 <Mcu_SetMode+0x70>
+		McuMode = McuMode & ~(1<<(30));
+ 8004a42:	687b      	ldr	r3, [r7, #4]
+ 8004a44:	f023 4380 	bic.w	r3, r3, #1073741824	; 0x40000000
+ 8004a48:	607b      	str	r3, [r7, #4]
+		RCC->AHBENR  |= McuMode ;
+ 8004a4a:	4b08      	ldr	r3, [pc, #32]	; (8004a6c <Mcu_SetMode+0x84>)
+ 8004a4c:	695a      	ldr	r2, [r3, #20]
+ 8004a4e:	4907      	ldr	r1, [pc, #28]	; (8004a6c <Mcu_SetMode+0x84>)
+ 8004a50:	687b      	ldr	r3, [r7, #4]
+ 8004a52:	4313      	orrs	r3, r2
+ 8004a54:	614b      	str	r3, [r1, #20]
+ 8004a56:	e005      	b.n	8004a64 <Mcu_SetMode+0x7c>
+	}
+	else {
+		Det_ReportError(MODULE_ID, Mcu_SetMode_ID, MCU_E_PARAM_MODE);
+ 8004a58:	220c      	movs	r2, #12
+ 8004a5a:	2108      	movs	r1, #8
+ 8004a5c:	2065      	movs	r0, #101	; 0x65
+ 8004a5e:	f7ff fd87 	bl	8004570 <Det_ReportError>
+	}
+}
+ 8004a62:	bf00      	nop
+ 8004a64:	bf00      	nop
+ 8004a66:	3708      	adds	r7, #8
+ 8004a68:	46bd      	mov	sp, r7
+ 8004a6a:	bd80      	pop	{r7, pc}
+ 8004a6c:	40021000 	.word	0x40021000
+ 8004a70:	80200000 	.word	0x80200000
+ 8004a74:	40000400 	.word	0x40000400
+
+08004a78 <Port_VidInit>:
+ *
+ *
+ *
+ *
+ */
+void Port_VidInit (void){
+ 8004a78:	b480      	push	{r7}
+ 8004a7a:	b083      	sub	sp, #12
+ 8004a7c:	af00      	add	r7, sp, #0
+	PORT_SemArryOfPins = xSemaphoreCreateBinary();
+	xSemaphoreGive(PORT_SemArryOfPins);
+	PORT_SemArryOfActivition  = xSemaphoreCreateBinary();
+	xSemaphoreGive(PORT_SemArryOfActivition);
+#endif
+	for (uint8 i = 0 ; i < NUM_OF_PORT ; i++){
+ 8004a7e:	2300      	movs	r3, #0
+ 8004a80:	71fb      	strb	r3, [r7, #7]
+ 8004a82:	e08f      	b.n	8004ba4 <Port_VidInit+0x12c>
+		switch (Port_ArrOfPorts[i].Port_Num){
+ 8004a84:	79fb      	ldrb	r3, [r7, #7]
+ 8004a86:	4a4c      	ldr	r2, [pc, #304]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004a88:	f812 3013 	ldrb.w	r3, [r2, r3, lsl #1]
+ 8004a8c:	2b02      	cmp	r3, #2
+ 8004a8e:	d06d      	beq.n	8004b6c <Port_VidInit+0xf4>
+ 8004a90:	2b02      	cmp	r3, #2
+ 8004a92:	f300 8084 	bgt.w	8004b9e <Port_VidInit+0x126>
+ 8004a96:	2b00      	cmp	r3, #0
+ 8004a98:	d002      	beq.n	8004aa0 <Port_VidInit+0x28>
+ 8004a9a:	2b01      	cmp	r3, #1
+ 8004a9c:	d033      	beq.n	8004b06 <Port_VidInit+0x8e>
+ 8004a9e:	e07e      	b.n	8004b9e <Port_VidInit+0x126>
+		case Port_GPIO_A :
+			/* to Reset register */
+			GPIOA->CRL.Reg = 0x00000000 ;
+ 8004aa0:	4b46      	ldr	r3, [pc, #280]	; (8004bbc <Port_VidInit+0x144>)
+ 8004aa2:	2200      	movs	r2, #0
+ 8004aa4:	601a      	str	r2, [r3, #0]
+			GPIOA->CRH.Reg = 0x00000000 ;
+ 8004aa6:	4b45      	ldr	r3, [pc, #276]	; (8004bbc <Port_VidInit+0x144>)
+ 8004aa8:	2200      	movs	r2, #0
+ 8004aaa:	605a      	str	r2, [r3, #4]
+
+			/* to set mode of pins */
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004aac:	2300      	movs	r3, #0
+ 8004aae:	71bb      	strb	r3, [r7, #6]
+ 8004ab0:	e00f      	b.n	8004ad2 <Port_VidInit+0x5a>
+				GPIOA->CRL.Reg |= ( Port_ArrOfPorts[Port_GPIO_A].Mode <<(i  * BASE_CRL_CRH) ) ;
+ 8004ab2:	4b42      	ldr	r3, [pc, #264]	; (8004bbc <Port_VidInit+0x144>)
+ 8004ab4:	681b      	ldr	r3, [r3, #0]
+ 8004ab6:	4a40      	ldr	r2, [pc, #256]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004ab8:	7852      	ldrb	r2, [r2, #1]
+ 8004aba:	4611      	mov	r1, r2
+ 8004abc:	79ba      	ldrb	r2, [r7, #6]
+ 8004abe:	0092      	lsls	r2, r2, #2
+ 8004ac0:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004ac4:	4611      	mov	r1, r2
+ 8004ac6:	4a3d      	ldr	r2, [pc, #244]	; (8004bbc <Port_VidInit+0x144>)
+ 8004ac8:	430b      	orrs	r3, r1
+ 8004aca:	6013      	str	r3, [r2, #0]
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004acc:	79bb      	ldrb	r3, [r7, #6]
+ 8004ace:	3301      	adds	r3, #1
+ 8004ad0:	71bb      	strb	r3, [r7, #6]
+ 8004ad2:	79bb      	ldrb	r3, [r7, #6]
+ 8004ad4:	2b07      	cmp	r3, #7
+ 8004ad6:	d9ec      	bls.n	8004ab2 <Port_VidInit+0x3a>
+			}
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004ad8:	2300      	movs	r3, #0
+ 8004ada:	717b      	strb	r3, [r7, #5]
+ 8004adc:	e00f      	b.n	8004afe <Port_VidInit+0x86>
+				GPIOA->CRH.Reg |= ( Port_ArrOfPorts[Port_GPIO_A].Mode <<(i  * BASE_CRL_CRH) ) ;
+ 8004ade:	4b37      	ldr	r3, [pc, #220]	; (8004bbc <Port_VidInit+0x144>)
+ 8004ae0:	685b      	ldr	r3, [r3, #4]
+ 8004ae2:	4a35      	ldr	r2, [pc, #212]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004ae4:	7852      	ldrb	r2, [r2, #1]
+ 8004ae6:	4611      	mov	r1, r2
+ 8004ae8:	797a      	ldrb	r2, [r7, #5]
+ 8004aea:	0092      	lsls	r2, r2, #2
+ 8004aec:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004af0:	4611      	mov	r1, r2
+ 8004af2:	4a32      	ldr	r2, [pc, #200]	; (8004bbc <Port_VidInit+0x144>)
+ 8004af4:	430b      	orrs	r3, r1
+ 8004af6:	6053      	str	r3, [r2, #4]
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004af8:	797b      	ldrb	r3, [r7, #5]
+ 8004afa:	3301      	adds	r3, #1
+ 8004afc:	717b      	strb	r3, [r7, #5]
+ 8004afe:	797b      	ldrb	r3, [r7, #5]
+ 8004b00:	2b07      	cmp	r3, #7
+ 8004b02:	d9ec      	bls.n	8004ade <Port_VidInit+0x66>
+			}
+			break ;
+ 8004b04:	e04b      	b.n	8004b9e <Port_VidInit+0x126>
+		case Port_GPIO_B :
+			/* to Reset register */
+			GPIOB->CRL.Reg = (0x00000000);
+ 8004b06:	4b2e      	ldr	r3, [pc, #184]	; (8004bc0 <Port_VidInit+0x148>)
+ 8004b08:	2200      	movs	r2, #0
+ 8004b0a:	601a      	str	r2, [r3, #0]
+			GPIOB->CRH.Reg = (0x00000000);
+ 8004b0c:	4b2c      	ldr	r3, [pc, #176]	; (8004bc0 <Port_VidInit+0x148>)
+ 8004b0e:	2200      	movs	r2, #0
+ 8004b10:	605a      	str	r2, [r3, #4]
+			/* to set mode of pins */
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004b12:	2300      	movs	r3, #0
+ 8004b14:	713b      	strb	r3, [r7, #4]
+ 8004b16:	e00f      	b.n	8004b38 <Port_VidInit+0xc0>
+				GPIOB->CRL.Reg |= ( Port_ArrOfPorts[Port_GPIO_B].Mode <<(i  * BASE_CRL_CRH) ) ;
+ 8004b18:	4b29      	ldr	r3, [pc, #164]	; (8004bc0 <Port_VidInit+0x148>)
+ 8004b1a:	681b      	ldr	r3, [r3, #0]
+ 8004b1c:	4a26      	ldr	r2, [pc, #152]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004b1e:	78d2      	ldrb	r2, [r2, #3]
+ 8004b20:	4611      	mov	r1, r2
+ 8004b22:	793a      	ldrb	r2, [r7, #4]
+ 8004b24:	0092      	lsls	r2, r2, #2
+ 8004b26:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004b2a:	4611      	mov	r1, r2
+ 8004b2c:	4a24      	ldr	r2, [pc, #144]	; (8004bc0 <Port_VidInit+0x148>)
+ 8004b2e:	430b      	orrs	r3, r1
+ 8004b30:	6013      	str	r3, [r2, #0]
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004b32:	793b      	ldrb	r3, [r7, #4]
+ 8004b34:	3301      	adds	r3, #1
+ 8004b36:	713b      	strb	r3, [r7, #4]
+ 8004b38:	793b      	ldrb	r3, [r7, #4]
+ 8004b3a:	2b07      	cmp	r3, #7
+ 8004b3c:	d9ec      	bls.n	8004b18 <Port_VidInit+0xa0>
+			}
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004b3e:	2300      	movs	r3, #0
+ 8004b40:	70fb      	strb	r3, [r7, #3]
+ 8004b42:	e00f      	b.n	8004b64 <Port_VidInit+0xec>
+				GPIOB->CRH.Reg |= ( Port_ArrOfPorts[Port_GPIO_B].Mode <<(i  * BASE_CRL_CRH) ) ;
+ 8004b44:	4b1e      	ldr	r3, [pc, #120]	; (8004bc0 <Port_VidInit+0x148>)
+ 8004b46:	685b      	ldr	r3, [r3, #4]
+ 8004b48:	4a1b      	ldr	r2, [pc, #108]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004b4a:	78d2      	ldrb	r2, [r2, #3]
+ 8004b4c:	4611      	mov	r1, r2
+ 8004b4e:	78fa      	ldrb	r2, [r7, #3]
+ 8004b50:	0092      	lsls	r2, r2, #2
+ 8004b52:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004b56:	4611      	mov	r1, r2
+ 8004b58:	4a19      	ldr	r2, [pc, #100]	; (8004bc0 <Port_VidInit+0x148>)
+ 8004b5a:	430b      	orrs	r3, r1
+ 8004b5c:	6053      	str	r3, [r2, #4]
+			for (uint8 i = 0 ; i < 8 ; i++ ){
+ 8004b5e:	78fb      	ldrb	r3, [r7, #3]
+ 8004b60:	3301      	adds	r3, #1
+ 8004b62:	70fb      	strb	r3, [r7, #3]
+ 8004b64:	78fb      	ldrb	r3, [r7, #3]
+ 8004b66:	2b07      	cmp	r3, #7
+ 8004b68:	d9ec      	bls.n	8004b44 <Port_VidInit+0xcc>
+			}
+			break ;
+ 8004b6a:	e018      	b.n	8004b9e <Port_VidInit+0x126>
+		case Port_GPIO_C :
+			/* to Reset register */
+			GPIOC->CRL.Reg = (0x00000000);
+ 8004b6c:	4b15      	ldr	r3, [pc, #84]	; (8004bc4 <Port_VidInit+0x14c>)
+ 8004b6e:	2200      	movs	r2, #0
+ 8004b70:	601a      	str	r2, [r3, #0]
+			GPIOC->CRH.Reg = (0x00000000);
+ 8004b72:	4b14      	ldr	r3, [pc, #80]	; (8004bc4 <Port_VidInit+0x14c>)
+ 8004b74:	2200      	movs	r2, #0
+ 8004b76:	605a      	str	r2, [r3, #4]
+
+			/* to set mode of pins of port C */
+			GPIOC->CRH.Reg |= ( Port_ArrOfPorts[Port_GPIO_C].Mode <<(5  * BASE_CRL_CRH) ) ;
+ 8004b78:	4b12      	ldr	r3, [pc, #72]	; (8004bc4 <Port_VidInit+0x14c>)
+ 8004b7a:	685b      	ldr	r3, [r3, #4]
+ 8004b7c:	4a0e      	ldr	r2, [pc, #56]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004b7e:	7952      	ldrb	r2, [r2, #5]
+ 8004b80:	0512      	lsls	r2, r2, #20
+ 8004b82:	4611      	mov	r1, r2
+ 8004b84:	4a0f      	ldr	r2, [pc, #60]	; (8004bc4 <Port_VidInit+0x14c>)
+ 8004b86:	430b      	orrs	r3, r1
+ 8004b88:	6053      	str	r3, [r2, #4]
+			GPIOC->CRH.Reg |= ( Port_ArrOfPorts[Port_GPIO_C].Mode <<(6  * BASE_CRL_CRH) ) ;
+ 8004b8a:	4b0e      	ldr	r3, [pc, #56]	; (8004bc4 <Port_VidInit+0x14c>)
+ 8004b8c:	685b      	ldr	r3, [r3, #4]
+ 8004b8e:	4a0a      	ldr	r2, [pc, #40]	; (8004bb8 <Port_VidInit+0x140>)
+ 8004b90:	7952      	ldrb	r2, [r2, #5]
+ 8004b92:	0612      	lsls	r2, r2, #24
+ 8004b94:	4611      	mov	r1, r2
+ 8004b96:	4a0b      	ldr	r2, [pc, #44]	; (8004bc4 <Port_VidInit+0x14c>)
+ 8004b98:	430b      	orrs	r3, r1
+ 8004b9a:	6053      	str	r3, [r2, #4]
+			break ;
+ 8004b9c:	bf00      	nop
+	for (uint8 i = 0 ; i < NUM_OF_PORT ; i++){
+ 8004b9e:	79fb      	ldrb	r3, [r7, #7]
+ 8004ba0:	3301      	adds	r3, #1
+ 8004ba2:	71fb      	strb	r3, [r7, #7]
+ 8004ba4:	79fb      	ldrb	r3, [r7, #7]
+ 8004ba6:	2b02      	cmp	r3, #2
+ 8004ba8:	f67f af6c 	bls.w	8004a84 <Port_VidInit+0xc>
+		}
+	}
+#if PORT_DESIGN == PORT_FREERTOS
+	xSemaphoreGive(PORT_SemArrOfPorts);
+#endif
+}
+ 8004bac:	bf00      	nop
+ 8004bae:	bf00      	nop
+ 8004bb0:	370c      	adds	r7, #12
+ 8004bb2:	46bd      	mov	sp, r7
+ 8004bb4:	bc80      	pop	{r7}
+ 8004bb6:	4770      	bx	lr
+ 8004bb8:	20000024 	.word	0x20000024
+ 8004bbc:	40010800 	.word	0x40010800
+ 8004bc0:	40010c00 	.word	0x40010c00
+ 8004bc4:	40011000 	.word	0x40011000
+
+08004bc8 <Port_EnumSetterPin>:
+ *
+ *
+ *
+ */
+
+Error_State       Port_EnumSetterPin(Port_PinType Copy_ChannelId ,Port_PinModeType Copy_Mode){
+ 8004bc8:	b480      	push	{r7}
+ 8004bca:	b083      	sub	sp, #12
+ 8004bcc:	af00      	add	r7, sp, #0
+ 8004bce:	4603      	mov	r3, r0
+ 8004bd0:	460a      	mov	r2, r1
+ 8004bd2:	71fb      	strb	r3, [r7, #7]
+ 8004bd4:	4613      	mov	r3, r2
+ 8004bd6:	71bb      	strb	r3, [r7, #6]
+	if ( Copy_ChannelId >=Port_A0 && Copy_ChannelId <=Port_C14){
+ 8004bd8:	79fb      	ldrb	r3, [r7, #7]
+ 8004bda:	2b2e      	cmp	r3, #46	; 0x2e
+ 8004bdc:	d809      	bhi.n	8004bf2 <Port_EnumSetterPin+0x2a>
+
+#if PORT_DESIGN == PORT_FREERTOS
+	xSemaphoreTake(PORT_SemArryOfPins,portMAX_DELAY);
+	xSemaphoreTake(PORT_SemArryOfActivition,portMAX_DELAY);
+#endif
+		Port_ArryOfPins[Copy_ChannelId]       = Copy_Mode      ;
+ 8004bde:	79fb      	ldrb	r3, [r7, #7]
+ 8004be0:	4907      	ldr	r1, [pc, #28]	; (8004c00 <Port_EnumSetterPin+0x38>)
+ 8004be2:	79ba      	ldrb	r2, [r7, #6]
+ 8004be4:	54ca      	strb	r2, [r1, r3]
+		Port_ArryOfActivition[Copy_ChannelId] = STD_ON         ;
+ 8004be6:	79fb      	ldrb	r3, [r7, #7]
+ 8004be8:	4a06      	ldr	r2, [pc, #24]	; (8004c04 <Port_EnumSetterPin+0x3c>)
+ 8004bea:	2101      	movs	r1, #1
+ 8004bec:	54d1      	strb	r1, [r2, r3]
+#if PORT_DESIGN == PORT_FREERTOS
+	xSemaphoreGive(PORT_SemArryOfPins);
+	xSemaphoreGive(PORT_SemArryOfActivition);
+#endif
+		return E_OK ;
+ 8004bee:	2303      	movs	r3, #3
+ 8004bf0:	e000      	b.n	8004bf4 <Port_EnumSetterPin+0x2c>
+	}
+	return E_INVALID_PARAMETER ;
+ 8004bf2:	2302      	movs	r3, #2
+}
+ 8004bf4:	4618      	mov	r0, r3
+ 8004bf6:	370c      	adds	r7, #12
+ 8004bf8:	46bd      	mov	sp, r7
+ 8004bfa:	bc80      	pop	{r7}
+ 8004bfc:	4770      	bx	lr
+ 8004bfe:	bf00      	nop
+ 8004c00:	200000e4 	.word	0x200000e4
+ 8004c04:	20000114 	.word	0x20000114
+
+08004c08 <Port_VidRunnable>:
+ *
+ *
+ *
+ *
+ */
+void  Port_VidRunnable (void) {
+ 8004c08:	b580      	push	{r7, lr}
+ 8004c0a:	b082      	sub	sp, #8
+ 8004c0c:	af00      	add	r7, sp, #0
+	uint8 i = 0 ;
+ 8004c0e:	2300      	movs	r3, #0
+ 8004c10:	71fb      	strb	r3, [r7, #7]
+
+#if PORT_DESIGN == PORT_FREERTOS
+	xSemaphoreTake(PORT_SemArryOfPins,portMAX_DELAY);
+	xSemaphoreTake(PORT_SemArryOfActivition,portMAX_DELAY);
+#endif
+	while(  i <= Port_A15 ){
+ 8004c12:	e00f      	b.n	8004c34 <Port_VidRunnable+0x2c>
+		if (Port_ArryOfActivition[i] != STD_OFF){
+ 8004c14:	79fb      	ldrb	r3, [r7, #7]
+ 8004c16:	4a23      	ldr	r2, [pc, #140]	; (8004ca4 <Port_VidRunnable+0x9c>)
+ 8004c18:	5cd3      	ldrb	r3, [r2, r3]
+ 8004c1a:	2b00      	cmp	r3, #0
+ 8004c1c:	d007      	beq.n	8004c2e <Port_VidRunnable+0x26>
+			Port_SetPinMode(GPIOA,i, Port_ArryOfPins[i]);
+ 8004c1e:	79fb      	ldrb	r3, [r7, #7]
+ 8004c20:	4a21      	ldr	r2, [pc, #132]	; (8004ca8 <Port_VidRunnable+0xa0>)
+ 8004c22:	5cd2      	ldrb	r2, [r2, r3]
+ 8004c24:	79fb      	ldrb	r3, [r7, #7]
+ 8004c26:	4619      	mov	r1, r3
+ 8004c28:	4820      	ldr	r0, [pc, #128]	; (8004cac <Port_VidRunnable+0xa4>)
+ 8004c2a:	f000 f845 	bl	8004cb8 <Port_SetPinMode>
+		}
+		i++;
+ 8004c2e:	79fb      	ldrb	r3, [r7, #7]
+ 8004c30:	3301      	adds	r3, #1
+ 8004c32:	71fb      	strb	r3, [r7, #7]
+	while(  i <= Port_A15 ){
+ 8004c34:	79fb      	ldrb	r3, [r7, #7]
+ 8004c36:	2b0f      	cmp	r3, #15
+ 8004c38:	d9ec      	bls.n	8004c14 <Port_VidRunnable+0xc>
+	}
+
+	while(  i <= Port_B15 ){
+ 8004c3a:	e012      	b.n	8004c62 <Port_VidRunnable+0x5a>
+		if (Port_ArryOfActivition[i] != STD_OFF){
+ 8004c3c:	79fb      	ldrb	r3, [r7, #7]
+ 8004c3e:	4a19      	ldr	r2, [pc, #100]	; (8004ca4 <Port_VidRunnable+0x9c>)
+ 8004c40:	5cd3      	ldrb	r3, [r2, r3]
+ 8004c42:	2b00      	cmp	r3, #0
+ 8004c44:	d00a      	beq.n	8004c5c <Port_VidRunnable+0x54>
+			Port_SetPinMode(GPIOB,(i & ~(0x10)), Port_ArryOfPins[i]);
+ 8004c46:	79fb      	ldrb	r3, [r7, #7]
+ 8004c48:	f023 0310 	bic.w	r3, r3, #16
+ 8004c4c:	b2d9      	uxtb	r1, r3
+ 8004c4e:	79fb      	ldrb	r3, [r7, #7]
+ 8004c50:	4a15      	ldr	r2, [pc, #84]	; (8004ca8 <Port_VidRunnable+0xa0>)
+ 8004c52:	5cd3      	ldrb	r3, [r2, r3]
+ 8004c54:	461a      	mov	r2, r3
+ 8004c56:	4816      	ldr	r0, [pc, #88]	; (8004cb0 <Port_VidRunnable+0xa8>)
+ 8004c58:	f000 f82e 	bl	8004cb8 <Port_SetPinMode>
+		}
+		i++;
+ 8004c5c:	79fb      	ldrb	r3, [r7, #7]
+ 8004c5e:	3301      	adds	r3, #1
+ 8004c60:	71fb      	strb	r3, [r7, #7]
+	while(  i <= Port_B15 ){
+ 8004c62:	79fb      	ldrb	r3, [r7, #7]
+ 8004c64:	2b1f      	cmp	r3, #31
+ 8004c66:	d9e9      	bls.n	8004c3c <Port_VidRunnable+0x34>
+	}
+
+	if (Port_ArryOfActivition[Port_C13] != STD_OFF){
+ 8004c68:	4b0e      	ldr	r3, [pc, #56]	; (8004ca4 <Port_VidRunnable+0x9c>)
+ 8004c6a:	f893 302d 	ldrb.w	r3, [r3, #45]	; 0x2d
+ 8004c6e:	2b00      	cmp	r3, #0
+ 8004c70:	d007      	beq.n	8004c82 <Port_VidRunnable+0x7a>
+		Port_SetPinMode(GPIOC,(Port_C13 & ~(0x10)), Port_ArryOfPins[Port_C13]);
+ 8004c72:	4b0d      	ldr	r3, [pc, #52]	; (8004ca8 <Port_VidRunnable+0xa0>)
+ 8004c74:	f893 302d 	ldrb.w	r3, [r3, #45]	; 0x2d
+ 8004c78:	461a      	mov	r2, r3
+ 8004c7a:	212d      	movs	r1, #45	; 0x2d
+ 8004c7c:	480d      	ldr	r0, [pc, #52]	; (8004cb4 <Port_VidRunnable+0xac>)
+ 8004c7e:	f000 f81b 	bl	8004cb8 <Port_SetPinMode>
+	}
+
+	if (Port_ArryOfActivition[Port_C14] != STD_OFF){
+ 8004c82:	4b08      	ldr	r3, [pc, #32]	; (8004ca4 <Port_VidRunnable+0x9c>)
+ 8004c84:	f893 302e 	ldrb.w	r3, [r3, #46]	; 0x2e
+ 8004c88:	2b00      	cmp	r3, #0
+ 8004c8a:	d007      	beq.n	8004c9c <Port_VidRunnable+0x94>
+		Port_SetPinMode(GPIOC,(Port_C14 & ~(0x10)), Port_ArryOfPins[Port_C13]);
+ 8004c8c:	4b06      	ldr	r3, [pc, #24]	; (8004ca8 <Port_VidRunnable+0xa0>)
+ 8004c8e:	f893 302d 	ldrb.w	r3, [r3, #45]	; 0x2d
+ 8004c92:	461a      	mov	r2, r3
+ 8004c94:	212e      	movs	r1, #46	; 0x2e
+ 8004c96:	4807      	ldr	r0, [pc, #28]	; (8004cb4 <Port_VidRunnable+0xac>)
+ 8004c98:	f000 f80e 	bl	8004cb8 <Port_SetPinMode>
+#if PORT_DESIGN == PORT_FREERTOS
+	xSemaphoreGive(PORT_SemArryOfPins);
+	xSemaphoreGive(PORT_SemArryOfActivition);
+#endif
+
+}
+ 8004c9c:	bf00      	nop
+ 8004c9e:	3708      	adds	r7, #8
+ 8004ca0:	46bd      	mov	sp, r7
+ 8004ca2:	bd80      	pop	{r7, pc}
+ 8004ca4:	20000114 	.word	0x20000114
+ 8004ca8:	200000e4 	.word	0x200000e4
+ 8004cac:	40010800 	.word	0x40010800
+ 8004cb0:	40010c00 	.word	0x40010c00
+ 8004cb4:	40011000 	.word	0x40011000
+
+08004cb8 <Port_SetPinMode>:
+	00: Input mode (reset state)
+	01: Output mode, max speed 10 MHz.
+	10: Output mode, max speed 2 MHz.
+	11: Output mode, max speed 50 MHz
+=============================================== */
+void    Port_SetPinMode      (GPIOX_REG *GPIOX,Port_PinType Pin,Port_PinModeType Mode){
+ 8004cb8:	b480      	push	{r7}
+ 8004cba:	b083      	sub	sp, #12
+ 8004cbc:	af00      	add	r7, sp, #0
+ 8004cbe:	6078      	str	r0, [r7, #4]
+ 8004cc0:	460b      	mov	r3, r1
+ 8004cc2:	70fb      	strb	r3, [r7, #3]
+ 8004cc4:	4613      	mov	r3, r2
+ 8004cc6:	70bb      	strb	r3, [r7, #2]
+	if (Pin <= LOW_PIN) {
+ 8004cc8:	78fb      	ldrb	r3, [r7, #3]
+ 8004cca:	2b07      	cmp	r3, #7
+ 8004ccc:	d815      	bhi.n	8004cfa <Port_SetPinMode+0x42>
+		GPIOX->CRL.Reg  &= ~( 0xf << (Pin * BASE_CRL_CRH)) ;
+ 8004cce:	687b      	ldr	r3, [r7, #4]
+ 8004cd0:	681b      	ldr	r3, [r3, #0]
+ 8004cd2:	78fa      	ldrb	r2, [r7, #3]
+ 8004cd4:	0092      	lsls	r2, r2, #2
+ 8004cd6:	210f      	movs	r1, #15
+ 8004cd8:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004cdc:	43d2      	mvns	r2, r2
+ 8004cde:	401a      	ands	r2, r3
+ 8004ce0:	687b      	ldr	r3, [r7, #4]
+ 8004ce2:	601a      	str	r2, [r3, #0]
+		GPIOX->CRL.Reg |= (Mode << (Pin * BASE_CRL_CRH));
+ 8004ce4:	687b      	ldr	r3, [r7, #4]
+ 8004ce6:	681b      	ldr	r3, [r3, #0]
+ 8004ce8:	78b9      	ldrb	r1, [r7, #2]
+ 8004cea:	78fa      	ldrb	r2, [r7, #3]
+ 8004cec:	0092      	lsls	r2, r2, #2
+ 8004cee:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004cf2:	431a      	orrs	r2, r3
+ 8004cf4:	687b      	ldr	r3, [r7, #4]
+ 8004cf6:	601a      	str	r2, [r3, #0]
+	} else {
+		GPIOX->CRH.Reg  &= ~( 0xf << ( (Pin-8) * BASE_CRL_CRH)) ;
+		GPIOX->CRH.Reg |= (Mode << ((Pin - 8) * BASE_CRL_CRH));
+	}
+ 8004cf8:	e016      	b.n	8004d28 <Port_SetPinMode+0x70>
+		GPIOX->CRH.Reg  &= ~( 0xf << ( (Pin-8) * BASE_CRL_CRH)) ;
+ 8004cfa:	687b      	ldr	r3, [r7, #4]
+ 8004cfc:	685b      	ldr	r3, [r3, #4]
+ 8004cfe:	78fa      	ldrb	r2, [r7, #3]
+ 8004d00:	3a08      	subs	r2, #8
+ 8004d02:	0092      	lsls	r2, r2, #2
+ 8004d04:	210f      	movs	r1, #15
+ 8004d06:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004d0a:	43d2      	mvns	r2, r2
+ 8004d0c:	401a      	ands	r2, r3
+ 8004d0e:	687b      	ldr	r3, [r7, #4]
+ 8004d10:	605a      	str	r2, [r3, #4]
+		GPIOX->CRH.Reg |= (Mode << ((Pin - 8) * BASE_CRL_CRH));
+ 8004d12:	687b      	ldr	r3, [r7, #4]
+ 8004d14:	685b      	ldr	r3, [r3, #4]
+ 8004d16:	78b9      	ldrb	r1, [r7, #2]
+ 8004d18:	78fa      	ldrb	r2, [r7, #3]
+ 8004d1a:	3a08      	subs	r2, #8
+ 8004d1c:	0092      	lsls	r2, r2, #2
+ 8004d1e:	fa01 f202 	lsl.w	r2, r1, r2
+ 8004d22:	431a      	orrs	r2, r3
+ 8004d24:	687b      	ldr	r3, [r7, #4]
+ 8004d26:	605a      	str	r2, [r3, #4]
+ 8004d28:	bf00      	nop
+ 8004d2a:	370c      	adds	r7, #12
+ 8004d2c:	46bd      	mov	sp, r7
+ 8004d2e:	bc80      	pop	{r7}
+ 8004d30:	4770      	bx	lr
+	...
+
+08004d34 <main>:
+#if !defined(__SOFT_FP__) && defined(__ARM_FP)
+  #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
+#endif
+
+int main(void)
+{
+ 8004d34:	b580      	push	{r7, lr}
+ 8004d36:	b082      	sub	sp, #8
+ 8004d38:	af00      	add	r7, sp, #0
+    // Perform MCU and peripheral initialization
+    Mcu_Init();
+ 8004d3a:	f7ff fda9 	bl	8004890 <Mcu_Init>
+    Mcu_EnumSetPerAPB2(APB2_PER_GPIOA);
+ 8004d3e:	4819      	ldr	r0, [pc, #100]	; (8004da4 <main+0x70>)
+ 8004d40:	f7ff fe0e 	bl	8004960 <Mcu_EnumSetPerAPB2>
+
+    // Perform other initializations
+	Port_VidInit();
+ 8004d44:	f7ff fe98 	bl	8004a78 <Port_VidInit>
+    Dio_VidInit();
+ 8004d48:	f7ff fc1c 	bl	8004584 <Dio_VidInit>
+
+	/* Intilaize led */
+	Port_EnumSetterPin(Port_A0, PORT_PIN_OUT|G_PUSH_PULL);
+ 8004d4c:	2102      	movs	r1, #2
+ 8004d4e:	2000      	movs	r0, #0
+ 8004d50:	f7ff ff3a 	bl	8004bc8 <Port_EnumSetterPin>
+
+	Mcu_VidRunnable();
+ 8004d54:	f7ff fe22 	bl	800499c <Mcu_VidRunnable>
+	Port_VidRunnable();
+ 8004d58:	f7ff ff56 	bl	8004c08 <Port_VidRunnable>
+	Dio_VidRunnable();
+ 8004d5c:	f7ff fcaa 	bl	80046b4 <Dio_VidRunnable>
+
+    /* Loop forever */
+	for(;;){
+		Dio_EnumSetterPin(Dio_A0, STD_ON);
+ 8004d60:	2101      	movs	r1, #1
+ 8004d62:	2000      	movs	r0, #0
+ 8004d64:	f7ff fc80 	bl	8004668 <Dio_EnumSetterPin>
+		Dio_VidRunnable();
+ 8004d68:	f7ff fca4 	bl	80046b4 <Dio_VidRunnable>
+		for(uint32 i=0;i<110000;i++);      /* To delay led */
+ 8004d6c:	2300      	movs	r3, #0
+ 8004d6e:	607b      	str	r3, [r7, #4]
+ 8004d70:	e002      	b.n	8004d78 <main+0x44>
+ 8004d72:	687b      	ldr	r3, [r7, #4]
+ 8004d74:	3301      	adds	r3, #1
+ 8004d76:	607b      	str	r3, [r7, #4]
+ 8004d78:	687b      	ldr	r3, [r7, #4]
+ 8004d7a:	4a0b      	ldr	r2, [pc, #44]	; (8004da8 <main+0x74>)
+ 8004d7c:	4293      	cmp	r3, r2
+ 8004d7e:	d9f8      	bls.n	8004d72 <main+0x3e>
+		Dio_EnumSetterPin(Dio_A0, STD_OFF);
+ 8004d80:	2100      	movs	r1, #0
+ 8004d82:	2000      	movs	r0, #0
+ 8004d84:	f7ff fc70 	bl	8004668 <Dio_EnumSetterPin>
+		Dio_VidRunnable();
+ 8004d88:	f7ff fc94 	bl	80046b4 <Dio_VidRunnable>
+		for(uint32 i=0;i<110000;i++);      /* To delay led */
+ 8004d8c:	2300      	movs	r3, #0
+ 8004d8e:	603b      	str	r3, [r7, #0]
+ 8004d90:	e002      	b.n	8004d98 <main+0x64>
+ 8004d92:	683b      	ldr	r3, [r7, #0]
+ 8004d94:	3301      	adds	r3, #1
+ 8004d96:	603b      	str	r3, [r7, #0]
+ 8004d98:	683b      	ldr	r3, [r7, #0]
+ 8004d9a:	4a03      	ldr	r2, [pc, #12]	; (8004da8 <main+0x74>)
+ 8004d9c:	4293      	cmp	r3, r2
+ 8004d9e:	d9f8      	bls.n	8004d92 <main+0x5e>
+		Dio_EnumSetterPin(Dio_A0, STD_ON);
+ 8004da0:	e7de      	b.n	8004d60 <main+0x2c>
+ 8004da2:	bf00      	nop
+ 8004da4:	80000004 	.word	0x80000004
+ 8004da8:	0001adaf 	.word	0x0001adaf
+
+08004dac <Reset_Handler>:
+
+  .section .text.Reset_Handler
+  .weak Reset_Handler
+  .type Reset_Handler, %function
+Reset_Handler:
+  ldr   r0, =_estack
+ 8004dac:	480d      	ldr	r0, [pc, #52]	; (8004de4 <LoopForever+0x2>)
+  mov   sp, r0          /* set stack pointer */
+ 8004dae:	4685      	mov	sp, r0
+/* Call the clock system initialization function.*/
+  bl  SystemInit
+ 8004db0:	f3af 8000 	nop.w
+
+/* Copy the data segment initializers from flash to SRAM */
+  ldr r0, =_sdata
+ 8004db4:	480c      	ldr	r0, [pc, #48]	; (8004de8 <LoopForever+0x6>)
+  ldr r1, =_edata
+ 8004db6:	490d      	ldr	r1, [pc, #52]	; (8004dec <LoopForever+0xa>)
+  ldr r2, =_sidata
+ 8004db8:	4a0d      	ldr	r2, [pc, #52]	; (8004df0 <LoopForever+0xe>)
+  movs r3, #0
+ 8004dba:	2300      	movs	r3, #0
+  b LoopCopyDataInit
+ 8004dbc:	e002      	b.n	8004dc4 <LoopCopyDataInit>
+
+08004dbe <CopyDataInit>:
+
+CopyDataInit:
+  ldr r4, [r2, r3]
+ 8004dbe:	58d4      	ldr	r4, [r2, r3]
+  str r4, [r0, r3]
+ 8004dc0:	50c4      	str	r4, [r0, r3]
+  adds r3, r3, #4
+ 8004dc2:	3304      	adds	r3, #4
+
+08004dc4 <LoopCopyDataInit>:
+
+LoopCopyDataInit:
+  adds r4, r0, r3
+ 8004dc4:	18c4      	adds	r4, r0, r3
+  cmp r4, r1
+ 8004dc6:	428c      	cmp	r4, r1
+  bcc CopyDataInit
+ 8004dc8:	d3f9      	bcc.n	8004dbe <CopyDataInit>
+
+/* Zero fill the bss segment. */
+  ldr r2, =_sbss
+ 8004dca:	4a0a      	ldr	r2, [pc, #40]	; (8004df4 <LoopForever+0x12>)
+  ldr r4, =_ebss
+ 8004dcc:	4c0a      	ldr	r4, [pc, #40]	; (8004df8 <LoopForever+0x16>)
+  movs r3, #0
+ 8004dce:	2300      	movs	r3, #0
+  b LoopFillZerobss
+ 8004dd0:	e001      	b.n	8004dd6 <LoopFillZerobss>
+
+08004dd2 <FillZerobss>:
+
+FillZerobss:
+  str  r3, [r2]
+ 8004dd2:	6013      	str	r3, [r2, #0]
+  adds r2, r2, #4
+ 8004dd4:	3204      	adds	r2, #4
+
+08004dd6 <LoopFillZerobss>:
+
+LoopFillZerobss:
+  cmp r2, r4
+ 8004dd6:	42a2      	cmp	r2, r4
+  bcc FillZerobss
+ 8004dd8:	d3fb      	bcc.n	8004dd2 <FillZerobss>
+
+/* Call static constructors */
+  bl __libc_init_array
+ 8004dda:	f000 f811 	bl	8004e00 <__libc_init_array>
+/* Call the application's entry point.*/
+  bl main
+ 8004dde:	f7ff ffa9 	bl	8004d34 <main>
+
+08004de2 <LoopForever>:
+
+LoopForever:
+  b LoopForever
+ 8004de2:	e7fe      	b.n	8004de2 <LoopForever>
+  ldr   r0, =_estack
+ 8004de4:	20005000 	.word	0x20005000
+  ldr r0, =_sdata
+ 8004de8:	20000000 	.word	0x20000000
+  ldr r1, =_edata
+ 8004dec:	2000002c 	.word	0x2000002c
+  ldr r2, =_sidata
+ 8004df0:	08004e68 	.word	0x08004e68
+  ldr r2, =_sbss
+ 8004df4:	2000002c 	.word	0x2000002c
+  ldr r4, =_ebss
+ 8004df8:	20000144 	.word	0x20000144
+
+08004dfc <ADC1_2_IRQHandler>:
+ * @retval : None
+*/
+  .section .text.Default_Handler,"ax",%progbits
+Default_Handler:
+Infinite_Loop:
+  b Infinite_Loop
+ 8004dfc:	e7fe      	b.n	8004dfc <ADC1_2_IRQHandler>
+	...
+
+08004e00 <__libc_init_array>:
+ 8004e00:	b570      	push	{r4, r5, r6, lr}
+ 8004e02:	2600      	movs	r6, #0
+ 8004e04:	4d0c      	ldr	r5, [pc, #48]	; (8004e38 <__libc_init_array+0x38>)
+ 8004e06:	4c0d      	ldr	r4, [pc, #52]	; (8004e3c <__libc_init_array+0x3c>)
+ 8004e08:	1b64      	subs	r4, r4, r5
+ 8004e0a:	10a4      	asrs	r4, r4, #2
+ 8004e0c:	42a6      	cmp	r6, r4
+ 8004e0e:	d109      	bne.n	8004e24 <__libc_init_array+0x24>
+ 8004e10:	f000 f81a 	bl	8004e48 <_init>
+ 8004e14:	2600      	movs	r6, #0
+ 8004e16:	4d0a      	ldr	r5, [pc, #40]	; (8004e40 <__libc_init_array+0x40>)
+ 8004e18:	4c0a      	ldr	r4, [pc, #40]	; (8004e44 <__libc_init_array+0x44>)
+ 8004e1a:	1b64      	subs	r4, r4, r5
+ 8004e1c:	10a4      	asrs	r4, r4, #2
+ 8004e1e:	42a6      	cmp	r6, r4
+ 8004e20:	d105      	bne.n	8004e2e <__libc_init_array+0x2e>
+ 8004e22:	bd70      	pop	{r4, r5, r6, pc}
+ 8004e24:	f855 3b04 	ldr.w	r3, [r5], #4
+ 8004e28:	4798      	blx	r3
+ 8004e2a:	3601      	adds	r6, #1
+ 8004e2c:	e7ee      	b.n	8004e0c <__libc_init_array+0xc>
+ 8004e2e:	f855 3b04 	ldr.w	r3, [r5], #4
+ 8004e32:	4798      	blx	r3
+ 8004e34:	3601      	adds	r6, #1
+ 8004e36:	e7f2      	b.n	8004e1e <__libc_init_array+0x1e>
+ 8004e38:	08004e60 	.word	0x08004e60
+ 8004e3c:	08004e60 	.word	0x08004e60
+ 8004e40:	08004e60 	.word	0x08004e60
+ 8004e44:	08004e64 	.word	0x08004e64
+
+08004e48 <_init>:
+ 8004e48:	b5f8      	push	{r3, r4, r5, r6, r7, lr}
+ 8004e4a:	bf00      	nop
+ 8004e4c:	bcf8      	pop	{r3, r4, r5, r6, r7}
+ 8004e4e:	bc08      	pop	{r3}
+ 8004e50:	469e      	mov	lr, r3
+ 8004e52:	4770      	bx	lr
+
+08004e54 <_fini>:
+ 8004e54:	b5f8      	push	{r3, r4, r5, r6, r7, lr}
+ 8004e56:	bf00      	nop
+ 8004e58:	bcf8      	pop	{r3, r4, r5, r6, r7}
+ 8004e5a:	bc08      	pop	{r3}
+ 8004e5c:	469e      	mov	lr, r3
+ 8004e5e:	4770      	bx	lr
