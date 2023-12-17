@@ -90,6 +90,7 @@ int main(void)
   MX_GPIO_Init();
   MX_CRC_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   /* USER CODE END 2 */
 

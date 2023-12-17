@@ -18,6 +18,7 @@
 
 /*==================== Macro Declerations  ===========================*/
 /* The configurations of BL using */
+#define ESP_UART                                &huart1
 #define BL_DEBUG_UART                           &huart2 // make it on different port from BL_HOST_COMMUNICATION_UART
 #define BL_HOST_COMMUNICATION_UART              &huart2
 #define CRC_ENGINE_OBJ                          &hcrc
@@ -125,6 +126,7 @@ typedef void (*BL_pFunc)(uint8_t *);
 
 /*==================== Software Interface Declerations  ===============*/
 void      BL_PrintMassage(char* format, ...);
+void      ESP_PrintMassage(char *format, ...) ;
 BL_Status BL_UART_Fetch_Host_Commend(void);
 
 #endif /* INC_BOOTLOADER_H_ */
