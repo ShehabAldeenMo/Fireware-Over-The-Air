@@ -64,7 +64,6 @@ BL_Status BL_UART_Fetch_Host_Commend(void) {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage("Bootloader started..\r\n");
 #endif
-
 	/* Host commend format :
 	   => Commend Length  (1 byte = Data_Length )
 	  */
@@ -777,6 +776,7 @@ void BL_PrintMassage(char *format, ...) {
 	/* Transmit the formatted data through the defined UART */
 	HAL_UART_Transmit(BL_DEBUG_UART, (uint8_t*) Message, (uint16_t)sizeof(Message),
 	HAL_MAX_DELAY);
+
 #elif  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
 	/* Transmit the formatted data through the defined CAN */
 #elif  BL_DEBUG_METHOD == BL_ENABLE_ETHERNET_DEBUG_MESSAGE
@@ -786,3 +786,23 @@ void BL_PrintMassage(char *format, ...) {
 	va_end(args);
 }
 
+void ESP_PrintMassage(char *format, ...) {
+	char Message[100] = { 0 };
+	va_list args;
+	/* Enable acess to the variable arguments */
+	va_start(args, format);
+	/* Write the formatted data from variable argument list to string */
+	vsprintf(Message, format, args);
+#if  BL_DEBUG_METHOD == BL_ENABLE_UART_DEBUG_MESSAGE
+	/* Transmit the formatted data through the defined UART */
+	HAL_UART_Transmit(ESP_UART, (uint8_t*) Message, (uint16_t)sizeof(Message),
+		HAL_MAX_DELAY);
+
+#elif  BL_DEBUG_METHOD == BL_ENABLE_CAN_DEBUG_MESSAGE
+	/* Transmit the formatted data through the defined CAN */
+#elif  BL_DEBUG_METHOD == BL_ENABLE_ETHERNET_DEBUG_MESSAGE
+	/* Transmit the formatted data through the defined ETHERNET */
+#endif
+	/* Perform cleanup for an ap object initialized by a call to va_start */
+	va_end(args);
+}
