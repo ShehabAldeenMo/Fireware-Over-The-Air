@@ -8,7 +8,8 @@ This project is to enable remote firmware updates using **ESP8266**, **STM32F103
 3. [Main Features](#Main-Features)
 4. [How To Install And Run](#How-To-Install-And_Run)
 5. [How To Use](#How-To-Use)
-   
+6. [New_Features](#New-Features)
+
 ## Introduction
 This project facilitates firmware updates over-the-air (FOTA) for an STM32F103 microcontroller using an ESP8266 and Google Firebase. Key components include WiFi connectivity, Firebase authentication, and MQTT communication.
 
@@ -34,5 +35,8 @@ This section provides an overview of the primary functions and interfaces used i
 
 ## How To Use
 
+## New Features
+Server web with different i/p to web that implementation will be using link which baraa give me (visual studio). Web will transmit this commend to esp and esp will transmit the suitable commend by uart to master branch. Master branch will detect if this commend belong to them or not. If It's not belong to it,It will transmit the commend using CAN protocol. The master or branch will response to esp with master with suitable frame to transmit it to firebase with the previous host responses. We will make server with filezille which master will connect on this server if it recieve wirte toemory commend and take this file. we will make bootmanager to edit on bootloader. Finish the future functions and commends that you want. 
+Implement drivers with autosar sws standards.
 
 
