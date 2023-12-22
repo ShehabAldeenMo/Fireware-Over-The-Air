@@ -44,3 +44,5 @@ Task3:</br>
 Application when notices accumalting errors in code that will clear application flag then reset micro-controller. If it is resetted, BootManager will check on managing flag to be sure that is ok. Then will jump to bootloader and check before while(1) on booting flag. If it is setted, It will chack on application flags to read which one is ok and jump on it's application.</br>
 Task4:</br>
 Web server should send if this commends is related to master micro-controller or branch. If it relates to master, We will do the previos senario. If it doesn't relate, It will communicates with the branch with CAN protocal with the same senario. </br>
+Task5: </br>
+Implement these all drivers using autosar SWS.
