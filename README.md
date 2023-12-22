@@ -36,7 +36,11 @@ This section provides an overview of the primary functions and interfaces used i
 ## How To Use
 
 ## New Features
-Server web with different i/p to web that implementation will be using link which baraa give me (visual studio). Web will transmit this commend to esp and esp will transmit the suitable commend by uart to master branch. Master branch will detect if this commend belong to them or not. If It's not belong to it,It will transmit the commend using CAN protocol. The master or branch will response to esp with master with suitable frame to transmit it to firebase with the previous host responses. We will make server with filezille which master will connect on this server if it recieve wirte toemory commend and take this file. we will make bootmanager to edit on bootloader. Finish the future functions and commends that you want. 
-Implement drivers with autosar sws standards.
-
-
+Task 1:</br>
+Make BootManager in page(0:n) in flash memory to stay in managing. Web server send commend to BootManager to connect on filezille server using esp32 that recieve file.bin "BootLoader" to write it in flash page(n:m) then set the managing flag and reset micro-controller. Bootmanager ask about managing flag at first if It set jump to Bootloader. If not It will stay in managing. After it will be setted protect this region with level 1.</br>
+Task2:</br>
+Bootloader stays in booting till recieve any commend from web server. Web server can send any commend to esp options and make caculations on it as CRC and make suitable frames to bootloader. Bootlaoder reply on server using esp32 (on firbase or server) with the wanted response. When server send commend to connect on filezille then takes file.bin "Application" to write it in flash page(n:m) starting from entered address then set the booting flag and reset micro-controller. BootLoader ask about booting flag at first. If not it will stay in booting. If It set Bootloader will check on region of flags that contains application flags. </br>
+Task3:</br>
+Application when notices accumalting errors in code that will clear application flag then reset micro-controller. If it is resetted, BootManager will check on managing flag to be sure that is ok. Then will jump to bootloader and check before while(1) on booting flag. If it is setted, It will chack on application flags to read which one is ok and jump on it's application.</br>
+Task4:</br>
+Web server should send if this commends is related to master micro-controller or branch. If it relates to master, We will do the previos senario. If it doesn't relate, It will communicates with the branch with CAN protocal with the same senario. </br>
