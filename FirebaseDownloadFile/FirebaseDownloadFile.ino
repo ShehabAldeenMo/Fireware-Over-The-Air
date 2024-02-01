@@ -1,3 +1,4 @@
+/*======================    Includes             =====================*/
 #include <Arduino.h>
 #if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
 #include <WiFi.h>
@@ -10,94 +11,69 @@
 #elif __has_include(<WiFiS3.h>)
 #include <WiFiS3.h>
 #endif
-
 #include <Firebase_ESP_Client.h>
+#include <PubSubClient.h>
 #include "LittleFS.h"
+#include <addons/TokenHelper.h>   // Provide the token generation process info.
+#include <addons/SDHelper.h>      // Provide the SD card interfaces setting and mounting
 
 
-/**************************************************************************/
-#define TWOBYTES                                16
-#define APPLICATION_BASE_ADDRESS                0x08004400
-#define ADDRESS_INDEX                           2
-#define PACKET_LENGTH_FILE_TRANS                64
-#define ACK                                     10
-#define FLASH_PAYLOAD_WRITING_PASSED            0x01
 
-void SendFileToBootloader(void);
-/**************************************************************************/
-
-// Provide the token generation process info.
-#include <addons/TokenHelper.h>
-
-// Provide the SD card interfaces setting and mounting
-#include <addons/SDHelper.h>
-
-/* 1. Define the WiFi credentials */
-#define WIFI_SSID "NewSignal"
-#define WIFI_PASSWORD "Encrpted#753951456"
-
-/* 2. Define the API Key */
+/*======================    Definations             =====================*/
+#define WIFI_SSID "NewSignal"                      /* WiFi Connection Network*/
+#define WIFI_PASSWORD "Encrpted#753951456"         /* WiFi Password */
+#define mqtt_server "test.mosquitto.org"           /* MQTT Server */
+#define TWOBYTES                     16       
+#define APPLICATION_BASE_ADDRESS     0x08004400    /* Application 1 base address */
+#define ADDRESS_INDEX                2             /* Index of address in packet from esp to stm */
+#define PACKET_LENGTH_FILE_TRANS     64            /* The max number of payload data length of transferring file */
 #define API_KEY "AIzaSyCnu0Gv4eHBS3YngCYb6wSKASRG-p9XUPY"
+                                                   /* Define the API Key */
+#define USER_EMAIL "shehabmohammed2002@gmail.com"  /* Define the user Email and password that alreadey registerd or added in your project */
+#define USER_PASSWORD "123456"                     /* Password of account on Firebase */
+#define STORAGE_BUCKET_ID "fota-70b84.appspot.com" /* Define the Firebase storage bucket ID e.g bucket-name.appspot.com */
 
-/* 3. Define the user Email and password that alreadey registerd or added in your project */
-#define USER_EMAIL "shehabmohammed2002@gmail.com"
-#define USER_PASSWORD "123456"
-
-/* 4. Define the Firebase storage bucket ID e.g bucket-name.appspot.com */
-#define STORAGE_BUCKET_ID "fota-70b84.appspot.com"
-
-// Define Firebase Data object
-FirebaseData fbdo;
-
+/*======================    Global Variables             =====================*/
+int Global_Address_Counter = 0 ;                   /* The number of packets used to send file 64byte by 64byte */ 
+FirebaseData fbdo;                                 /* Define Firebase Data object */
+char Global_Erase_Counter = 0 ;                    /* To count the input parameters in erase function */
+char Global_Erase_Flag = 0 ;                              /* To ensure that is related to erase function */
 FirebaseAuth auth;
 FirebaseConfig config;
-
 bool taskCompleted = false;
+WiFiClient espClient;
+PubSubClient Client(espClient);
 
+/*======================        Functions                =====================*/
+void SetupWiFi();                                /* To set configurations of WiFi */
+void MQTTcallback(char* topic, byte* payload, unsigned int length);
+                                                  /* Call back for reciving and transmit to MQTT server */
+void reconnect();                                 /* Reconnect on MQTT Server */
+void MessageInfo(int Message);                    /* To jump on specific function that meets target */
+void Erase_Flash(int Message);                    /* To erase specific pages */
+void SendFileToBootloader();                      /* To track file on firebase and transmit it */
+void Change_Read_Protection_Level();              /* Change protection level for specific pages */
+/*=========================  System Setup   ====================================*/
 void setup()
 {
-
+    /* Initialize uart 0 and 2 */
     Serial.begin(115200);
     Serial2.begin(115200);
 
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-    multi.addAP(WIFI_SSID, WIFI_PASSWORD);
-    multi.run();
-#else
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-#endif
-
-    Serial.print("Connecting to Wi-Fi");
-    unsigned long ms = millis();
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        Serial.print(".");
-        delay(300);
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-        if (millis() - ms > 10000)
-            break;
-#endif
-    }
-    Serial.println();
-    Serial.print("Connected with IP: ");
-    Serial.println(WiFi.localIP());
-    Serial.println();
-
-    Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
-
+    /* To connect on MQTT server */
+    Client.setServer(mqtt_server, 1883);
+    Client.setCallback(MQTTcallback);
+    
+    /* To set configurations of WiFi */
+    SetupWiFi();
     /* Assign the api key (required) */
-    config.api_key = API_KEY;
+    config.api_key = API_KEY;    
 
     /* Assign the user sign in credentials */
     auth.user.email = USER_EMAIL;
     auth.user.password = USER_PASSWORD;
-
-    // The WiFi credentials are required for Pico W
-    // due to it does not have reconnect feature.
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-    config.wifi.clearAP();
-    config.wifi.addAP(WIFI_SSID, WIFI_PASSWORD);
-#endif
+  
+    Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
 
     /* Assign the callback function for the long running token generation task */
     config.token_status_callback = tokenStatusCallback; // see addons/TokenHelper.h
@@ -115,9 +91,29 @@ void setup()
     config.fcs.download_buffer_size = 2048;
 
     Firebase.begin(&config, &auth);
+}
 
-    // if use SD card, mount it.
-    //SD_Card_Mounting(); // See src/addons/SDHelper.h
+
+/*==================== System loop =================================*/
+void loop()
+{
+    if (!Client.connected()) {
+      reconnect();
+    }
+    
+    if (Firebase.ready() && !taskCompleted)
+    {
+        taskCompleted = true;
+
+        Serial.println("\nDownload file...\n");
+
+        // The file systems for flash and SD/SDMMC can be changed in FirebaseFS.h.
+        if (!Firebase.Storage.download(&fbdo, STORAGE_BUCKET_ID /* Firebase Storage bucket id */, "ApplicationEdited.bin" /* path of remote file stored in the bucket */, "/update.bin" /* path to local file */, mem_storage_type_flash /* memory storage type, mem_storage_type_flash and mem_storage_type_sd */, fcsDownloadCallback /* callback function */))
+            Serial.println(fbdo.errorReason());
+            //SendFileToBootloader();
+    }
+    
+    Client.loop();
 }
 
 // The Firebase Storage download callback function
@@ -141,22 +137,71 @@ void fcsDownloadCallback(FCS_DownloadStatusInfo info)
     }
 }
 
-void loop()
-{
+void  SetupWiFi(){
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(WIFI_SSID);
+  WiFi.begin (WIFI_SSID,WIFI_PASSWORD);
+  
+  while (WiFi.status() != WL_CONNECTED ){
+    delay(500);
+    Serial.print(".");
+  }
 
-    // Firebase.ready() should be called repeatedly to handle authentication tasks.
+  Serial.println("");
+  Serial.println("WiFi Connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
 
-    if (Firebase.ready() && !taskCompleted)
+void MQTTcallback(char* topic, byte* payload, unsigned int length) {
+  String string;
+  int Local_Message = 0 ; 
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  
+  for (int i = 0; i < length; i++) {
+     string+=((char)payload[i]);   
+  }
+  
+  if (topic ="FOTA/Commends"){  
+    Serial.println(string); 
+    Local_Message = string.toInt();
+    MessageInfo(Local_Message);
+    delay(15);
+  }
+}
+
+void reconnect() {
+  while (!Client.connected()) {
+    Serial.println("Attempting MQTT connection..."); 
+    
+    if (Client.connect("ESPClient")) {
+      Serial.println("connected");
+      Client.subscribe("FOTA/Commends");
+    } 
+    else 
     {
-        taskCompleted = true;
-
-        Serial.println("\nDownload file...\n");
-
-        // The file systems for flash and SD/SDMMC can be changed in FirebaseFS.h.
-        if (!Firebase.Storage.download(&fbdo, STORAGE_BUCKET_ID /* Firebase Storage bucket id */, "ApplicationEdited.bin" /* path of remote file stored in the bucket */, "/update.bin" /* path to local file */, mem_storage_type_flash /* memory storage type, mem_storage_type_flash and mem_storage_type_sd */, fcsDownloadCallback /* callback function */))
-            Serial.println(fbdo.errorReason());
-            SendFileToBootloader();
+      Serial.print("failed, rc=");
+      Serial.print(Client.state());
+      Serial.println(" try again in 5 seconds"); 
+      delay(5000);
     }
+   }
+}
+
+void MessageInfo(int Message){
+   if (Message == 1){
+    SendFileToBootloader();
+   }
+   else if (Message == 2 || Global_Erase_Flag != 0 ){
+    Global_Erase_Counter++;
+    Erase_Flash(Message);
+   }
+   else if (Message == 3){
+    Change_Read_Protection_Level();
+   }
 }
 
 void SendFileToBootloader(void){
@@ -172,7 +217,7 @@ void SendFileToBootloader(void){
       CounetrByte = 0 ;
       Packet[0] = 70;
       Packet[1] = 0x16;
-      *(int*)(&Packet[ADDRESS_INDEX]) = Address ;
+      *(int*)(&Packet[ADDRESS_INDEX]) = Address+64*Global_Address_Counter ;
       Packet[6] = 64;
             
       while ( CounetrByte < 64 ){
@@ -183,44 +228,55 @@ void SendFileToBootloader(void){
         CounetrByte++; 
       }
       
-      for (char i = 0 ; i < 7 ; i++){
+      for (char i = 0 ; i < 71 ; i++){
         Serial2.write(Packet[i]);
       }
 
-      CounetrByte=0;
-      
-      while (CounetrByte<64){
-        Serial2.write(Packet[CounetrByte+7]);
-        CounetrByte++;
-      }
       /* Read ack state */
-      while (!Serial.available());  
+      Global_Address_Counter++;
+      while (!Serial.available()); 
       Serial.read();
+  }
+  file.close();
+}
+
+void Erase_Flash(int Message){
+  char Packet[7]={0};
+  int Flash_Base_Address = 0x08000000;
+  static int Page_Number = 0 ;
+  static int Page_Amount = 0 ;
+
+  /* 1st iteration to ensure that the Global_Erase_Flag is risied to enter erase function in next iteration from MessageInfo function*/
+  if (Global_Erase_Counter == 1){
+    Global_Erase_Flag = 1 ;
+  }
+  /* To enter number of page */
+  else if (Global_Erase_Counter == 2){
+    Page_Number = Message ; 
+  }
+  /* To determine amount of pages that you want to erase it */
+  else if (Global_Erase_Counter == 3){
+    Page_Amount = Message;
+
+    /* Packet formation */
+    Packet[0] = 6;
+    Packet[1] = 0x15;
+    *(int*)(&Packet[ADDRESS_INDEX]) = Flash_Base_Address+1024*Page_Number ;
+    Packet[6] = Page_Amount;
+
+    /* Packet transmitting */
+    for (char i = 0 ; i < 7 ; i++){
+      Serial2.write(Packet[i]);
+    } 
+
+    /* To initialize global variables in Erase function after transmit data  */
+    Global_Erase_Counter = 0 ;
+    Global_Erase_Flag  = 0 ;
+    Page_Number = 0 ;
+    Page_Amount = 0 ;
   }
 }
 
-void Bootloader_Test(){
-  int receivedValue = 0 ;
-      if (receivedValue == ACK) {
-        /* Read number of sending bytes */
-        while (!Serial.available());                
-        receivedValue = Serial.read();
-        Serial.printf("\nbootloader Acknowledge with (%d) bytes",receivedValue);
-
-        /* Read status of payload */
-        while (!Serial.available());
-        receivedValue = Serial.read();
-        
-        if (receivedValue == FLASH_PAYLOAD_WRITING_PASSED){
-          Serial.println("\nPayload Written Successfully");
-        }
-        else {
-          Serial.println("\nPayload Written failed");
-        }
-      } 
-      else {
-        // Not 0xCD, continue waiting
-        Serial.println("\nbootloader Not-Acknowledge");
-        Serial.printf("\nbootloader Not-Acknowledge with (%d) bytes",receivedValue);
-      }
+void Change_Read_Protection_Level(){
+  
 }
