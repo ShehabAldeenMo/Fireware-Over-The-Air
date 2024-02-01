@@ -60,8 +60,8 @@ all: main-build
 main-build: Bootloader.elf secondary-outputs
 
 # Tool invocations
-Bootloader.elf Bootloader.map: $(OBJS) $(USER_OBJS) D:\Embedded\ Track\Fireware\ Over\ the\ Air\FirmwareOverTheAir_Workspace\Bootloader\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Bootloader.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"D:\Embedded Track\Fireware Over the Air\FirmwareOverTheAir_Workspace\Bootloader\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Bootloader.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Bootloader.elf Bootloader.map: $(OBJS) $(USER_OBJS) D:\Embedded\ Track\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\Bootloader\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Bootloader.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"D:\Embedded Track\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\Bootloader\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Bootloader.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

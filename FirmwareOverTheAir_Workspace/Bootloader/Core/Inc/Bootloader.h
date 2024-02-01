@@ -20,8 +20,8 @@
 /* The configurations of BL using */
 #define BL_DEBUG_UART                           &huart2 /* defination of communcation protocal in debuging without hosy port */
 
-#define ESP     0
-#define PYTHON  1
+#define ESP        1
+#define PYTHON     0
 
 #if PYTHON == 1
 #define BL_HOST_COMMUNICATION_UART              &huart2 /* defination of communcation protocal with host */
@@ -34,7 +34,7 @@
 /* Enable debugging messages to be sent to check the status of BL */
 #define DEBUG_INFO_ENABLE                       0x01
 #define DEBUG_INFO_DISABLE                      0x00
-#define BL_DEBUG_ENABLE                         DEBUG_INFO_DISABLE /* Enable when you use BL_DEBUG_UART different from BL_HOST_COMMUNICATION_UART */
+#define BL_DEBUG_ENABLE                         DEBUG_INFO_ENABLE /* Enable when you use BL_DEBUG_UART different from BL_HOST_COMMUNICATION_UART */
 
 /* Choose the communication protocals that you use with bootloader */
 #define BL_ENABLE_UART_DEBUG_MESSAGE            0x00
@@ -54,12 +54,11 @@
 #define CBL_GO_TO_ADDER_CMD                     0x14 /* Sucess or Error code --> This commend is used to jump on bootloader to specified address (1 byte)*/
 #define CBL_FLASH_ERASE_CMD                     0x15 /* Sucess or Error code --> This commend is used to miss erase or sector erase of the user flash (1 byte) */
 #define CBL_MEM_WRITE_CMD                       0x16 /* Sucess or Error code --> This commend is used to write data in different memories of the MCU (1 byte) */
-#define CBL_JUMP_TO_APP                         0x17
 
 #define FIRST_COMMEND                           0x10
-#define LAST_COMMEND                            0x17
+#define LAST_COMMEND                            0x16
 
-#define NumberOfCommends                        0x08
+#define NumberOfCommends                        0x07
 
 /* That is the versions of your code and vendor id's */
 #define CBL_VENDOR_ID                           100

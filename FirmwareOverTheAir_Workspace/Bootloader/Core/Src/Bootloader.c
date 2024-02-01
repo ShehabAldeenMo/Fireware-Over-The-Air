@@ -17,17 +17,20 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer);
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer);
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer);
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer);
-static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer);
 
+#if PYTHON == 1
 static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint32_t Host_CRC);
+
 static void Bootloader_Send_ACK (uint8_t Reply_Length);
 static void Bootloader_Send_NACK();
+#endif
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len);
 
 static uint8_t CBL_STM32F103_GET_RDP_Level ();
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
 static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Pages);
 static uint8_t Flash_Memory_Write_Payload (uint8_t *Host_PayLoad , uint32_t Payload_Start_Address,uint8_t Payload_Len);
+static void Bootloader_Jump_To_User_App ();
 
 /*===================Static global Variables Definations  ==================*/
 static uint8_t BL_HostBuffer[BL_HOST_BUFFER_RX_LENGTH];
@@ -41,16 +44,12 @@ static uint8_t Bootloader_Supported_CMDs[NumberOfCommends] = {
 	CBL_GO_TO_ADDER_CMD,
 	CBL_FLASH_ERASE_CMD,
 	CBL_MEM_WRITE_CMD,
-	CBL_JUMP_TO_APP
 };
 
 static BL_pFunc Bootloader_Functions [NumberOfCommends] = {&Bootloader_Get_Version,
 &Bootloader_Get_Help,&Bootloader_Get_chip_Identification_Number,&Bootloader_Read_Protection_Level,
-&Bootloader_Jump_To_Address,&Bootloader_Erase_Flash,&Bootloader_Memory_Write
-,&Bootloader_Jump_To_User_App} ;
+&Bootloader_Jump_To_Address,&Bootloader_Erase_Flash,&Bootloader_Memory_Write} ;
 
-/* Counter for address */
-static uint16_t ESP_Address_Counter = 0 ;
 
 /*======================== Software Interface Definations  ====================*/
 BL_Status BL_Fetch_Commend(void) {
@@ -113,6 +112,7 @@ BL_Status BL_Fetch_Commend(void) {
 	return Status;
 }
 
+#if PYTHON == 1
 static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint32_t Host_CRC){
 	/* Detect CRC status */
 	CRC_Status Status = CRC_NACK ;
@@ -142,9 +142,12 @@ static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint3
 	}
 	return Status ;
 }
+#endif
 
 /* Send Acknowledge message of bootloader then the number of the bytes that you will transmit
    next to host */
+
+#if PYTHON == 1
 static void Bootloader_Send_ACK (uint8_t Reply_Length){
 	uint8_t ACK_Value[2] = {0};
 	ACK_Value[0] = CBL_SEND_ACK;
@@ -157,6 +160,7 @@ static void Bootloader_Send_NACK(){
 	uint8_t NACK_Value = CBL_SEND_NACK;
 	Bootloader_Send_Data_To_Host(&NACK_Value, 1);
 }
+#endif
 
 /* Function to communicate with host */
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len){
@@ -167,21 +171,24 @@ static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Le
  your packet is
    1- 1 byte for data length = 0x05
    2- 1 byte for commend number = 0x10
-   3- 4 bytes for CRC verifications
+   3- 4 bytes for CRC verifications if we used python code as host
    */
 static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 	/* Buffering the version and vendor id's in BL_Version */
 	uint8_t BL_Version[4] = { CBL_VENDOR_ID, CBL_SW_MAJOR_VERSION,
 			CBL_SW_MINOR_VERSION, CBL_SW_PATCH_VERSION };
+#if PYTHON == 1
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
 	uint32_t Host_CRC32 = 0 ;
+#endif
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Read bootloader version \r\n");
 #endif
 
+#if PYTHON == 1
 	/* Extract the CRC32 and Packet length sent by the HOST */
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
@@ -193,6 +200,7 @@ static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 #endif
 		/* Sending Acknowledge message and number of bytes which will be sent */
 		Bootloader_Send_ACK(4);
+#endif
 
 		/* Sending the version and vendor id's to meet the target from commend */
 		Bootloader_Send_Data_To_Host(BL_Version,4);
@@ -200,6 +208,8 @@ static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Bootloader Version %d.%d.%d\r\n",BL_Version[1],BL_Version[2],BL_Version[3]);
 #endif
+
+#if PYTHON == 1
 	}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -207,23 +217,28 @@ static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 #endif
 		Bootloader_Send_NACK();
 	}
+#endif
 }
 
 /*
  Your packet is :
    1- 1 byte data length = 0x05
    2- 1 byte commend number = 0x11
-   3- 4 bytes for CRC verifications
+   3- 4 bytes for CRC verifications if we used python code as host
 	*/
 static void Bootloader_Get_Help (uint8_t *Host_Buffer){
+
+#if PYTHON == 1
 	uint16_t Host_CMD_Packet_Len = 0 ;  /* used to define the beginning of CRC address in buffer */
 	uint32_t Host_CRC32 = 0 ;           /* Used to get CRC data */
+#endif
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("All supported commends code \r\n");
 #endif
 
 	/* Extract the CRC32 and Packet length sent by the HOST */
+#if PYTHON == 1
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
@@ -234,6 +249,7 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 #endif
 		/* Sending Acknowledge message and number of bytes which will be sent */
 		Bootloader_Send_ACK(NumberOfCommends);
+#endif
 		/* Sending the list of commends to meet the target from commend */
 		Bootloader_Send_Data_To_Host(Bootloader_Supported_CMDs,NumberOfCommends);
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -253,8 +269,9 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 			"CBL_READ_SECTOR_STATUS_CMD 0x%x\r\nCBL_OTP_READ_CMD 0x%x\r\nCBL_CHANGE_ROP_Level_CMD 0x%x\r\n",
 			Bootloader_Supported_CMDs[9], Bootloader_Supported_CMDs[10],
 			Bootloader_Supported_CMDs[11]);
-	BL_PrintMassage("CBL_JUMP_TO_APP 0x%x\r\n",Bootloader_Supported_CMDs[12]);
 #endif
+
+#if PYTHON == 1
 	}
 	else
 		{
@@ -263,19 +280,22 @@ static void Bootloader_Get_Help (uint8_t *Host_Buffer){
 #endif
 		Bootloader_Send_NACK();
 	}
+#endif
 }
 
 /*
  Your packet is :
    1- 1 byte for data length = 0x05
    2- 1 byte for commend number = 0x12
-   3- 4 bytes for CRC verifications
+   3- 4 bytes for CRC verifications if we used python code as host
 	*/
 static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
+#if PYTHON == 1
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
 	uint32_t Host_CRC32 = 0 ;
+#endif
 	/* Identify the id of used MCU */
 	uint16_t MCU_IdentificationNumber = 0 ;
 
@@ -283,6 +303,7 @@ static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Read MCU chip identification number \r\n");
 #endif
 
+#if PYTHON == 1
 	/* Extract the CRC32 and Packet length sent by the HOST */
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
@@ -292,16 +313,19 @@ static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("CRC is passed\r\n");
 #endif
+		/* Report MCU chip identification number */
+		Bootloader_Send_ACK(2);
+#endif
+
 		/* Get MCU chip identification number */
 		MCU_IdentificationNumber = (uint16_t)((DBGMCU->IDCODE)&0x00000FFF);
 
-		/* Report MCU chip identification number */
-		Bootloader_Send_ACK(2);
 		Bootloader_Send_Data_To_Host((uint8_t *)(&MCU_IdentificationNumber),2);
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("IdentificationNumber = %x\r\n",MCU_IdentificationNumber);
 #endif
 
+#if PYTHON == 1
 	}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -309,6 +333,7 @@ static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 #endif
 		Bootloader_Send_NACK();
 	}
+#endif
 }
 
 /* Get level of protection to flash memory */
@@ -325,13 +350,15 @@ static uint8_t CBL_STM32F103_GET_RDP_Level (){
  Your packet is :
    1- 1 byte data length = 0x05
    2- 1 byte commend number = 0x13
-   3- 4 bytes for CRC verifications
+   3- 4 bytes for CRC verifications if we used python code as host
  */
 static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
+#if PYTHON == 1
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
 	uint32_t Host_CRC32 = 0 ;
+#endif
 	/* Level of protection */
 	uint8_t RDP_Level = 0 ;
 
@@ -339,6 +366,7 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Read the flash protection out level \r\n");
 #endif
 
+#if PYTHON == 1
 	/* Extract the CRC32 and Packet length sent by the HOST */
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
@@ -350,6 +378,7 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 #endif
 		/* Report acknowledge message*/
 		Bootloader_Send_ACK(1);
+#endif
 		/* Read protection level */
 		RDP_Level = CBL_STM32F103_GET_RDP_Level();
 		/* Report level */
@@ -357,6 +386,8 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Protection level = %x\r\n",RDP_Level);
 #endif
+
+#if PYTHON == 1
 	}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -364,6 +395,7 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 #endif
 		Bootloader_Send_NACK();
 	}
+#endif
 }
 
 /* Verify that the address given from host is valid */
@@ -390,13 +422,16 @@ static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address){
    1- 1 byte data length = 0x09
    2- 1 byte commend number = 0x14
    3- 4 bytes for address
-   4- 4 bytes for CRC verifications
+   4- 4 bytes for CRC verifications if we used python code as host
 	*/
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
+#if PYTHON == 1
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
 	uint32_t Host_CRC32 = 0 ;
+#endif
+
 	/* Buffering address */
 	uint32_t Host_Jump_Address = 0 ;
 	/* TO check on state of given address is in region or not */
@@ -406,6 +441,7 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Bootloader jump to specified address \r\n");
 #endif
 
+#if PYTHON == 1
 	/* Extract the CRC32 and Packet length sent by the HOST */
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
@@ -417,6 +453,7 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 #endif
 		/* Report acknowledge message */
 		Bootloader_Send_ACK(1);
+#endif
 
 		/* To get the content of Host_Buffer and variable"Host_Jump_Address" realizes that it is address
 		 - &Host_Buffer[2] --> express the address of array of host
@@ -438,7 +475,7 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Jump To Application\r\n");
 #endif
-				Bootloader_Jump_To_User_App(Host_Buffer);
+				Bootloader_Jump_To_User_App();
 			}
 			else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -456,6 +493,7 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 		BL_PrintMassage("Address verification unsucessed\r\n");
 #endif
 		}
+#if PYTHON == 1
 	}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -463,18 +501,16 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 #endif
 		Bootloader_Send_NACK();
 	}
+#endif
 }
 
 /*
- Your packet is :
-   1- 1 byte data length = 0x01
-   2- 1 byte commend number = 0x17
- And be sure that
+ Be sure that
    1- base address in application is updated in (Bootloader_Jump_To_User_App)
    2- update size of bootloader code with suitable size as 17k or 15k
    3- update origin address of application code in flash memory in linker script and size also
   */
-static void Bootloader_Jump_To_User_App (uint8_t *Host_Buffer){
+static void Bootloader_Jump_To_User_App (){
 	/* Value of the main stack pointer of our main application find at address 0 in IVT */
 	uint32_t MSP_Value = *((volatile uint32_t*)FLASH_PAGE_BASE_ADDRESS_APP);
 	/* Reset Handler defination function of our main application */
@@ -572,17 +608,19 @@ static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Page
 
 /*
  Your packet is :
-   1- 1 byte data length = 0x07
+   1- 1 byte data length = 0x0A
    2- 1 byte commend number = 0x11
    3- 4 bytes for page address
    4- 1 byte for number of pages
-   5- 4 bytes for CRC verifications
+   5- 4 bytes for CRC verifications if we used python code as host
 	*/
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
+#if PYTHON == 1
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0 ;
 	/* Used to get CRC data */
 	uint32_t Host_CRC32 = 0 ;
+#endif
 	/* To check on Erase state */
 	uint8_t Erase_Status = UNSUCESSFUL_ERASE ;
 
@@ -590,6 +628,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Mase erase or page erase of the user flash \r\n");
 #endif
 
+#if PYTHON == 1
 	/* Extract the CRC32 and Packet length sent by the HOST */
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
@@ -601,6 +640,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 #endif
 		/* Send acknowledge to host */
 		Bootloader_Send_ACK(1);
+#endif
 		/* Perform Mass erase or sector erase of the yser flash */
 		Erase_Status = Perform_Flash_Erase ( *( (uint32_t*)&Host_Buffer[2] ),Host_Buffer[6]);
 		/* Report the erase state */
@@ -615,6 +655,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 		BL_PrintMassage("Unsucessful erased\r\n");
 #endif
 		}
+#if PYTHON == 1
 	}
 	else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -622,6 +663,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 #endif
 		Bootloader_Send_NACK();
 	}
+#endif
 }
 
 
@@ -701,14 +743,16 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
    3- 4 bytes for address
    4- 1 byte for size of writing data
    5- N bytes of data info
-   6- 4 bytes for CRC verifications
+   6- 4 bytes for CRC verifications if we used python code as host
 	*/
 
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
+#if PYTHON == 1
 	/* used to define the beginning of CRC address in buffer */
 	uint16_t Host_CMD_Packet_Len = 0;
 	/* Used to get CRC data */
 	uint32_t Host_CRC32 = 0;
+#endif
 	/* Base address that you will write on */
 	uint32_t HOST_Address = 0;
 	/* Number of bytes that will be sent */
@@ -722,35 +766,24 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Write data into memory \r\n");
 #endif
 
+#if PYTHON == 1
 	/* Extract the CRC32 and Packet length sent by the HOST */
 	Host_CMD_Packet_Len = Host_Buffer[0]+1 ;
 	Host_CRC32 = *(uint32_t *)(Host_Buffer + Host_CMD_Packet_Len - CRC_TYPE_SIZE) ;
 
 	/* CRC Verification */
-#if PYTHON == 1
 	if(CRC_OK == Bootloader_CRC_Verify(Host_Buffer,(Host_CMD_Packet_Len - CRC_TYPE_SIZE), Host_CRC32))
 	{
-#endif
-
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-		//BL_PrintMassage("CRC is passed\r\n");
-#endif
-
 		/* Send acknowledgement to the HOST */
-#if PYTHON == 1
 		Bootloader_Send_ACK(1);
 #endif
 
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("CRC is passed\r\n");
+#endif
+
 		/* Extract the start address from the Host packet */
-#if PYTHON == 1
 		HOST_Address = *((uint32_t *)(&Host_Buffer[2]));
-#endif
-
-#if ESP == 1
-		HOST_Address = *((uint32_t *)(&Host_Buffer[2]))+64*ESP_Address_Counter;
-		ESP_Address_Counter++;
-#endif
-
 		/* Extract the payload length from the Host packet */
 		Payload_Len = Host_Buffer[6];
 
