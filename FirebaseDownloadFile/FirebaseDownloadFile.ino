@@ -276,7 +276,10 @@ void Erase_Flash(int Message){
     Page_Amount = 0 ;
   }
 }
+<<<<<<< HEAD
 
 void Change_Read_Protection_Level(){
   
 }
+=======
+>>>>>>> 70c8c0b798c72b5a9ef74c8928d0e93624a1b635
