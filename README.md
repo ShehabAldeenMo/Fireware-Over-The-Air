@@ -21,9 +21,9 @@ Utilized NodeRED to create a web server based on a Python script (GUI). This ser
 **1.4 Command Handling** <br /> 
 **1.4.1 File Transmission** <br /> 
 Implemented file transmission by dividing files into packets with application base addresses and command numbers, ensuring acknowledgments for reliability.<br /> 
-**1.4.2 Flash Erasure** <br />  
+**1.4.2 Flash Erasure** <br /> 
 Allowed users to send commands for erasing flash by specifying base page numbers and the number of pages through NodeRED.<br /> 
-**1.4.3 Security Measures** <br />  
+**1.4.3 Security Measures** <br /> 
 Implemented measures to apply specific levels of protection on flash pages to safeguard applications from potential threats.<br /> 
 
 _**2- Communication Protocols**_ <br /> 
