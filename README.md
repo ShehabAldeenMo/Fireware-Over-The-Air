@@ -2,7 +2,6 @@
 This project is to enable remote firmware updates using **ESP32**, **STM32F103C8T6** and **Geogle Firebase**.The **ESP32** connects to **WiFi**, downloads the bootloader and firmware code, and communicates with the STM32.
 ![Screenshot 2024-02-01 104155](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/b0d02c6f-00ba-4343-941e-dbdb82eed83a)
 
-
 # _Table of Contents_
 1. [Introduction](#Introduction)
 2. [Technology Overview](#Technology-Overview)
