@@ -14,25 +14,25 @@ This project facilitates firmware updates over-the-air (FOTA) for an STM32F103 m
 ## _Technology Overview_
 _**1- IoT Integration**_ <br />
 **1.1 WiFi and MQTT** <br /> 
-Leveraged the WiFi network to connect to the MQTT server "test.mosquitto.org." Subscribed to various topics on the broker representing commands to the master branch in the microcontroller tree.<br />
+Leveraged the WiFi network to connect to the MQTT server "test.mosquitto.org." Subscribed to various topics on the broker representing commands to the master branch in the microcontroller tree. <br />
 **1.2 Firebase Integration** <br /> 
-Connected to Firebase to download the BootloaderApplication with an unlimited license, storing it in the ESP flash memory.<br /> <br /> 
+Connected to Firebase to download the BootloaderApplication with an unlimited license, storing it in the ESP flash memory. <br />
 **1.3 NodeRED for Web Server** <br /> 
-Utilized NodeRED to create a web server based on a Python script (GUI). This server allows users to configure commands visually.<br /> <br /> 
+Utilized NodeRED to create a web server based on a Python script (GUI). This server allows users to configure commands visually. <br /> 
 **1.4 Command Handling** <br /> 
 **1.4.1 File Transmission** <br /> 
-Implemented file transmission by dividing files into packets with application base addresses and command numbers, ensuring acknowledgments for reliability.<br /> 
-**1.4.2 Flash Erasure**<br />  
-Allowed users to send commands for erasing flash by specifying base page numbers and the number of pages through NodeRED.<br /> 
-**1.4.3 Security Measures**<br />  
-Implemented measures to apply specific levels of protection on flash pages to safeguard applications from potential threats.<br /> 
+Implemented file transmission by dividing files into packets with application base addresses and command numbers, ensuring acknowledgments for reliability. <br /> 
+**1.4.2 Flash Erasure** <br />  
+Allowed users to send commands for erasing flash by specifying base page numbers and the number of pages through NodeRED. <br /> 
+**1.4.3 Security Measures** <br />  
+Implemented measures to apply specific levels of protection on flash pages to safeguard applications from potential threats. <br /> 
 
 _**2- Communication Protocols**_ <br /> 
-**2.1 UART**<br /> 
-Utilized UART for communication between the ESP and master microcontroller.<br />  Employed UART to form a tree of microcontrollers. Each node in the tree is controlled through the UART bus, sending commands and updating applications.<br /> 
+**UART** <br /> 
+Utilized UART for communication between the ESP and master microcontroller.<br />  Employed UART to form a tree of microcontrollers. Each node in the tree is controlled through the UART bus, sending commands and updating applications. <br /> 
 
 _**3- Cybersecurity**_ <br /> 
-Implemented the RSA encryption algorithm in C to ensure secure communication. This included key generation, string and numeric conversion, encryption, and decryption.<br /> 
+Implemented the RSA encryption algorithm in C to ensure secure communication. This included key generation, string and numeric conversion, encryption, and decryption. <br /> 
 
 _**4- Bootloader**_ <br /> 
 **4.1 Command Set** <br /> 
