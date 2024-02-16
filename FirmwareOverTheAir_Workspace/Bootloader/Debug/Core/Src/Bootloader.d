@@ -24,7 +24,7 @@ Core/Src/Bootloader.o: ../Core/Src/Bootloader.c ../Core/Inc/Bootloader.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
- ../Core/Inc/crc.h
+ ../Core/Inc/crc.h ../Core/Inc/Bootloader_Config.h
 ../Core/Inc/Bootloader.h:
 ../Core/Inc/usart.h:
 ../Core/Inc/main.h:
@@ -53,3 +53,4 @@ Core/Src/Bootloader.o: ../Core/Src/Bootloader.c ../Core/Inc/Bootloader.h \
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h:
 ../Core/Inc/crc.h:
+../Core/Inc/Bootloader_Config.h:

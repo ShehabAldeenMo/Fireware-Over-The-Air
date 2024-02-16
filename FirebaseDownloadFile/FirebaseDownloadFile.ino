@@ -23,10 +23,12 @@
 #define WIFI_SSID "NewSignal"                      /* WiFi Connection Network*/
 #define WIFI_PASSWORD "Encrpted#753951456"         /* WiFi Password */
 #define mqtt_server "test.mosquitto.org"           /* MQTT Server */
-#define TWOBYTES                     16       
-#define APPLICATION_BASE_ADDRESS     0x08004400    /* Application 1 base address */
-#define ADDRESS_INDEX                2             /* Index of address in packet from esp to stm */
-#define PACKET_LENGTH_FILE_TRANS     64            /* The max number of payload data length of transferring file */
+#define TWOBYTES                      16       
+#define FLASH_BASE_ADDRESS            0x08000000   /* Flash base address of our micro-controller */
+#define APPLICATION1_OFFEST           0x5000       /* Application 1 base address */
+#define APPLICATION2_OFFEST           0xA000       /* Application 1 base address */
+#define ADDRESS_INDEX                 2            /* Index of address in packet from esp to stm */
+#define PACKET_LENGTH_FILE_TRANS      64           /* The max number of payload data length of transferring file */
 #define API_KEY "AIzaSyCnu0Gv4eHBS3YngCYb6wSKASRG-p9XUPY"
                                                    /* Define the API Key */
 #define USER_EMAIL "shehabmohammed2002@gmail.com"  /* Define the user Email and password that alreadey registerd or added in your project */
@@ -34,10 +36,17 @@
 #define STORAGE_BUCKET_ID "fota-70b84.appspot.com" /* Define the Firebase storage bucket ID e.g bucket-name.appspot.com */
 
 /*======================    Global Variables             =====================*/
-int Global_Address_Counter = 0 ;                   /* The number of packets used to send file 64byte by 64byte */ 
-FirebaseData fbdo;                                 /* Define Firebase Data object */
-char Global_Erase_Counter = 0 ;                    /* To count the input parameters in erase function */
-char Global_Erase_Flag = 0 ;                              /* To ensure that is related to erase function */
+int  Global_Address_Counter  = 0 ;                    /* The number of packets used to send file 64byte by 64byte */ 
+
+char Global_SendingFile_Flag = 0 ;                    /* To ensure that is related to writing payload function   */
+char Global_SendingFile_Counter = 0 ;                 /* Counter to function of Sending file o determine the time of calling */ 
+char Global_SendingFile_ECU  = 0 ;                    /* The number of ECU hat you want to write into */
+char Global_SendingFile_APP  = 0 ;                    /* The number of application */
+
+char Global_Erase_Counter    = 0 ;                    /* To count the input parameters in erase function */
+char Global_Erase_Flag       = 0 ;                    /* To ensure that is related to erase function */
+
+FirebaseData fbdo;                                    /* Define Firebase Data object */
 FirebaseAuth auth;
 FirebaseConfig config;
 bool taskCompleted = false;
@@ -51,8 +60,9 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length);
 void reconnect();                                 /* Reconnect on MQTT Server */
 void MessageInfo(int Message);                    /* To jump on specific function that meets target */
 void Erase_Flash(int Message);                    /* To erase specific pages */
-void SendFileToBootloader();                      /* To track file on firebase and transmit it */
+void SendFileToBootloader(int Message);           /* To track file on firebase and transmit it */
 void Change_Read_Protection_Level();              /* Change protection level for specific pages */
+
 /*=========================  System Setup   ====================================*/
 void setup()
 {
@@ -192,11 +202,14 @@ void reconnect() {
 }
 
 void MessageInfo(int Message){
-   if (Message == 1){
-    SendFileToBootloader();
+   if (Message == 1 || Global_SendingFile_Flag == 1){
+    Global_SendingFile_Counter++;
+    Global_SendingFile_Flag = 1 ;
+    SendFileToBootloader(Message);
    }
    else if (Message == 2 || Global_Erase_Flag != 0 ){
     Global_Erase_Counter++;
+    Global_Erase_Flag = 1 ;
     Erase_Flash(Message);
    }
    else if (Message == 3){
@@ -204,31 +217,56 @@ void MessageInfo(int Message){
    }
 }
 
-void SendFileToBootloader(void){
+void SendFileToBootloader(int Message){
   char Buf[2]={0};
-  char Packet[71]={0};
+  char Packet[73]={0};
   char CounetrByte = 0 ;
   char HexData = 0 ;
-  int  Address = APPLICATION_BASE_ADDRESS ;
+  static int  Address = FLASH_BASE_ADDRESS ;
+
+  if (Global_SendingFile_Counter == 1){
+    //Client.publish("FOTA/Commends","Sending file is running ");
+    //Client.publish("FOTA/Commends","Enter the ECU number ");
+  }
+  if (Global_SendingFile_Counter == 2){
+    //Client.publish("FOTA/Commends","Enter the application number");
+    Global_SendingFile_ECU = Message ;
+  }
+  else if (Global_SendingFile_Counter == 3){
+    Global_SendingFile_APP = Message ; 
+
+    /* To check on Application number  */
+    if (Global_SendingFile_APP == 1){
+       Address += APPLICATION1_OFFEST ;
+    }
+    else if (Global_SendingFile_APP = 2){
+       Address += APPLICATION2_OFFEST ;
+    }
+    else {
+       Client.publish("FOTA/Commends","Not Valid Application Number");
+       return ;
+    }
+    
+    File file = LittleFS.open("/update.bin", "r");
   
-  File file = LittleFS.open("/update.bin", "r");
-  
-  while(file.available()){
+    while(file.available()){
       CounetrByte = 0 ;
-      Packet[0] = 70;
+      Packet[0] = 72;
       Packet[1] = 0x16;
       *(int*)(&Packet[ADDRESS_INDEX]) = Address+64*Global_Address_Counter ;
-      Packet[6] = 64;
+      Packet[6] = Global_SendingFile_ECU ;
+      Packet[7] = Global_SendingFile_APP ;
+      Packet[8] = 64;
             
       while ( CounetrByte < 64 ){
         file.readBytes(Buf,2);
         HexData = strtol(Buf, NULL, TWOBYTES);
-        Packet[CounetrByte+7] = HexData ;
-        Serial.printf("\nPacket[%i]=%x",CounetrByte+7,Packet[CounetrByte+7]);
+        Packet[CounetrByte+9] = HexData ;
+        Serial.printf("\nPacket[%i]=%x",CounetrByte+7,Packet[CounetrByte+9]);
         CounetrByte++; 
       }
       
-      for (char i = 0 ; i < 71 ; i++){
+      for (char i = 0 ; i < 73 ; i++){
         Serial2.write(Packet[i]);
       }
 
@@ -236,36 +274,49 @@ void SendFileToBootloader(void){
       Global_Address_Counter++;
       while (!Serial.available()); 
       Serial.read();
-  }
-  file.close();
+     }//end while 
+
+     Global_SendingFile_Counter = 0 ;
+     Global_SendingFile_ECU     = 0 ;
+     Global_SendingFile_Flag    = 0 ;
+     Global_SendingFile_APP     = 0 ;
+     Global_Address_Counter     = 0 ;
+     //Client.publish("FOTA/Commends","File is fully transmitted");
+     file.close();
+  }//end else if == 3
 }
 
 void Erase_Flash(int Message){
-  char Packet[7]={0};
-  int Flash_Base_Address = 0x08000000;
+  char Packet[8]={0};
+  int Flash_Base_Address = FLASH_BASE_ADDRESS;
   static int Page_Number = 0 ;
   static int Page_Amount = 0 ;
 
   /* 1st iteration to ensure that the Global_Erase_Flag is risied to enter erase function in next iteration from MessageInfo function*/
-  if (Global_Erase_Counter == 1){
-    Global_Erase_Flag = 1 ;
-  }
   /* To enter number of page */
+  if (Global_Erase_Counter == 1){
+    //Client.publish("FOTA/Commends","Erase flash is runing");
+    //Client.publish("FOTA/Commends","Enter page number");
+  }
   else if (Global_Erase_Counter == 2){
+    //Client.publish("FOTA/Commends","Enter amount of erasing pages");
     Page_Number = Message ; 
   }
   /* To determine amount of pages that you want to erase it */
   else if (Global_Erase_Counter == 3){
+    //Client.publish("FOTA/Commends","Enter ECU number");
     Page_Amount = Message;
-
+  }
+  else if (Global_Erase_Counter == 4){
     /* Packet formation */
-    Packet[0] = 6;
+    Packet[0] = 7;
     Packet[1] = 0x15;
     *(int*)(&Packet[ADDRESS_INDEX]) = Flash_Base_Address+1024*Page_Number ;
-    Packet[6] = Page_Amount;
+    Packet[6] = Message;
+    Packet[7] = Page_Amount;
 
     /* Packet transmitting */
-    for (char i = 0 ; i < 7 ; i++){
+    for (char i = 0 ; i < 8 ; i++){
       Serial2.write(Packet[i]);
     } 
 
@@ -274,12 +325,9 @@ void Erase_Flash(int Message){
     Global_Erase_Flag  = 0 ;
     Page_Number = 0 ;
     Page_Amount = 0 ;
-  }
+  }//end else if
 }
-<<<<<<< HEAD
 
 void Change_Read_Protection_Level(){
   
 }
-=======
->>>>>>> 70c8c0b798c72b5a9ef74c8928d0e93624a1b635

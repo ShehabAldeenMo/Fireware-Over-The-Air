@@ -1,0 +1,5 @@
+../Src/Port_Prg.c:91:9:Port_GetVersionInfo	1
+../Src/Port_Prg.c:203:6:Port_VidInit	10
+../Src/Port_Prg.c:342:19:Port_EnumSetterPin	2
+../Src/Port_Prg.c:482:7:Port_VidRunnable	7
+../Src/Port_Prg.c:598:9:Port_SetPinMode	2
