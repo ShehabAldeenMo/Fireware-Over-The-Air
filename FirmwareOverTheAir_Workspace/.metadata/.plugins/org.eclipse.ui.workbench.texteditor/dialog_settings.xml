@@ -1,21 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
-		<item key="selection" value="ESP_Address_Counter"/>
+		<item key="selection" value="Perform_Flash_Erase"/>
 		<item key="wrap" value="true"/>
 		<item key="casesensitive" value="false"/>
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
 		<list key="findhistory">
+			<item value="Perform_Flash_Erase"/>
+			<item value="pOBInit"/>
+			<item value="Bootloader_Jump_To_User_App"/>
+			<item value="FLASH_PAGE_BASE_ADDRESS_APP"/>
+			<item value="CRC"/>
 			<item value="ESP_Address_Counter"/>
 		</list>
 		<list key="replacehistory">
+			<item value="FLASH_PAGE_BASE_ADDRESS_APP1"/>
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
-		<item key="DIALOG_X_ORIGIN" value="530"/>
-		<item key="DIALOG_Y_ORIGIN" value="108"/>
+		<item key="DIALOG_X_ORIGIN" value="891"/>
+		<item key="DIALOG_Y_ORIGIN" value="83"/>
 		<item key="DIALOG_WIDTH" value="322"/>
 		<item key="DIALOG_HEIGHT" value="391"/>
 		<item key="DIALOG_FONT_NAME" value="1|Segoe UI|9.0|0|WINDOWS|1|-12|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI"/>

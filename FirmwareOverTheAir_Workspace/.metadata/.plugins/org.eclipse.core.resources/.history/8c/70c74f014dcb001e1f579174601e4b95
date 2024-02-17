@@ -1,0 +1,16 @@
+/*
+ * Bootloader_Config.h
+ *
+ *  Created on: Feb 14, 2024
+ *      Author: HP
+ */
+
+#ifndef INC_BOOTLOADER_CONFIG_H_
+#define INC_BOOTLOADER_CONFIG_H_
+
+/*User configurations */
+#define ESP        1
+#define PYTHON     0
+/***/
+
+#endif /* INC_BOOTLOADER_CONFIG_H_ */

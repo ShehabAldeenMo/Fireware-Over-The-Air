@@ -1,0 +1,15 @@
+../Core/Src/Bootloader.c:55:11:BL_Fetch_Commend	5
+../Core/Src/Bootloader.c:166:13:Bootloader_Send_Data_To_Host	1
+../Core/Src/Bootloader.c:176:13:Bootloader_Get_Version	1
+../Core/Src/Bootloader.c:229:13:Bootloader_Get_Help	1
+../Core/Src/Bootloader.c:292:13:Bootloader_Get_chip_Identification_Number	1
+../Core/Src/Bootloader.c:340:16:CBL_STM32F103_GET_RDP_Level	1
+../Core/Src/Bootloader.c:355:13:Bootloader_Read_Protection_Level	1
+../Core/Src/Bootloader.c:402:16:Host_Jump_Address_Verfication	5
+../Core/Src/Bootloader.c:427:13:Bootloader_Jump_To_Address	3
+../Core/Src/Bootloader.c:513:13:Bootloader_Jump_To_User_App	1
+../Core/Src/Bootloader.c:538:16:Perform_Flash_Erase	6
+../Core/Src/Bootloader.c:617:13:Bootloader_Erase_Flash	2
+../Core/Src/Bootloader.c:672:16:Flash_Memory_Write_Payload	8
+../Core/Src/Bootloader.c:750:13:Bootloader_Memory_Write	2
+../Core/Src/Bootloader.c:830:6:BL_PrintMassage	1

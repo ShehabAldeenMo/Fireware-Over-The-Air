@@ -1,18 +1,17 @@
-00:23:52 **** Incremental Build of configuration Debug for project Bootloader ****
+23:13:42 **** Incremental Build of configuration Debug for project Bootloader ****
 make -j8 all 
 arm-none-eabi-gcc "../Core/Src/Bootloader.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/Bootloader.d" -MT"Core/Src/Bootloader.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/Bootloader.o"
-arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
 arm-none-eabi-gcc -o "Bootloader.elf" @"objects.list"   -mcpu=cortex-m3 -T"D:\Embedded Track\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\Bootloader\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Bootloader.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 Finished building target: Bootloader.elf
  
 arm-none-eabi-size   Bootloader.elf 
 arm-none-eabi-objdump -h -S  Bootloader.elf  > "Bootloader.list"
    text	   data	    bss	    dec	    hex	filename
-  13024	    136	   2288	  15448	   3c58	Bootloader.elf
+  11000	     80	   1984	  13064	   3308	Bootloader.elf
 Finished building: default.size.stdout
- 
 Finished building: Bootloader.list
  
+ 
 
-00:23:57 Build Finished. 0 errors, 0 warnings. (took 5s.169ms)
+23:13:45 Build Finished. 0 errors, 0 warnings. (took 3s.473ms)
 

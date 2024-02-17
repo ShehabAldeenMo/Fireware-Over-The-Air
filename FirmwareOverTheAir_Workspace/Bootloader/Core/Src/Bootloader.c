@@ -8,6 +8,7 @@
 
 /*============================ Includes  =============================*/
 #include "Bootloader.h"
+#include "Bootloader_Config.h"
 
 /*=============== Static Functions Declerations  =====================*/
 static void Bootloader_Get_Version (uint8_t *Host_Buffer);
@@ -17,7 +18,6 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer);
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer);
 static void Bootloader_Erase_Flash (uint8_t *Host_Buffer);
 static void Bootloader_Memory_Write (uint8_t *Host_Buffer);
-
 #if PYTHON == 1
 static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint32_t Host_CRC);
 
@@ -25,15 +25,25 @@ static void Bootloader_Send_ACK (uint8_t Reply_Length);
 static void Bootloader_Send_NACK();
 #endif
 static void Bootloader_Send_Data_To_Host(uint8_t *Host_Buffer , uint32_t Data_Len);
+static void Bootloader_Enable_R_Protection(uint8_t *Host_Buffer);
+static void Bootloader_Enable_W_Protection(uint8_t *Host_Buffer);
+static void Bootloader_SetApplication_Flag(uint8_t *Host_Buffer);
 
 static uint8_t CBL_STM32F103_GET_RDP_Level ();
 static uint8_t Host_Jump_Address_Verfication (uint32_t Jump_Address);
 static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Pages);
 static uint8_t Flash_Memory_Write_Payload (uint8_t *Host_PayLoad , uint32_t Payload_Start_Address,uint8_t Payload_Len);
-static void Bootloader_Jump_To_User_App ();
+static void    Bootloader_Jump_To_User_App1 ();
+static void    Bootloader_Jump_To_User_App2 ();
+
 
 /*===================Static global Variables Definations  ==================*/
 static uint8_t BL_HostBuffer[BL_HOST_BUFFER_RX_LENGTH];
+static uint8_t Global_Calling = 0 ;
+FLASH_OBProgramInitTypeDef pOBInit;
+uint32_t APP1_Flag __attribute__((section(".APPLICATION1_SECTION"))); //To read counter of Full TI in Flash
+uint32_t APP2_Flag __attribute__((section(".APPLICATION2_SECTION"))); //To read counter of Full TI in Flash
+
 
 /* All supported commends by bootloaders */
 static uint8_t Bootloader_Supported_CMDs[NumberOfCommends] = {
@@ -44,11 +54,15 @@ static uint8_t Bootloader_Supported_CMDs[NumberOfCommends] = {
 	CBL_GO_TO_ADDER_CMD,
 	CBL_FLASH_ERASE_CMD,
 	CBL_MEM_WRITE_CMD,
+	CBL_CHANGE_ROP_Level_CMD,
+	JUMP_TO_APPLICATION_CMD,
+	CBL_CHANGE_WOP_Level_CMD
 };
 
 static BL_pFunc Bootloader_Functions [NumberOfCommends] = {&Bootloader_Get_Version,
 &Bootloader_Get_Help,&Bootloader_Get_chip_Identification_Number,&Bootloader_Read_Protection_Level,
-&Bootloader_Jump_To_Address,&Bootloader_Erase_Flash,&Bootloader_Memory_Write} ;
+&Bootloader_Jump_To_Address,&Bootloader_Erase_Flash,&Bootloader_Memory_Write,&Bootloader_Enable_R_Protection,
+&Bootloader_SetApplication_Flag,&Bootloader_Enable_W_Protection} ;
 
 
 /*======================== Software Interface Definations  ====================*/
@@ -58,10 +72,25 @@ BL_Status BL_Fetch_Commend(void) {
 	/* To detect the status of uart in transmitting and receiving data */
 	HAL_StatusTypeDef HAL_Status = HAL_ERROR;
 	/* The data length that the host should be transmit at first */
-	uint8_t Data_Length = 0;
+	uint8_t Data_Length = RESET;
+
+	/* To check on flags status of applications in first iteration */
+	Global_Calling++;
+
+	/* To Check on applications flags in firsts iteration */
+	if (Global_Calling == FIRST_ITERATION){
+		/* To check on application 1 at first because it's the highest priority */
+		if ( APP1_Flag == TURN_ON ){
+			Bootloader_Jump_To_User_App1();
+		}
+		/* To check on application 1 at first because it's the second priority */
+		else if ( APP2_Flag == TURN_ON ){
+			Bootloader_Jump_To_User_App2();
+		}
+	}
 
 	/* To clear buffer of RX and prevent carbadge messages of buffer */
-	memset(BL_HostBuffer, 0, BL_HOST_BUFFER_RX_LENGTH);
+	memset(BL_HostBuffer, RESET , BL_HOST_BUFFER_RX_LENGTH);
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage("Bootloader started..\r\n");
@@ -142,12 +171,10 @@ static CRC_Status Bootloader_CRC_Verify(uint8_t *pData , uint8_t Data_Len, uint3
 	}
 	return Status ;
 }
-#endif
 
 /* Send Acknowledge message of bootloader then the number of the bytes that you will transmit
    next to host */
 
-#if PYTHON == 1
 static void Bootloader_Send_ACK (uint8_t Reply_Length){
 	uint8_t ACK_Value[2] = {0};
 	ACK_Value[0] = CBL_SEND_ACK;
@@ -297,7 +324,7 @@ static void Bootloader_Get_chip_Identification_Number (uint8_t *Host_Buffer){
 	uint32_t Host_CRC32 = 0 ;
 #endif
 	/* Identify the id of used MCU */
-	uint16_t MCU_IdentificationNumber = 0 ;
+	uint16_t MCU_IdentificationNumber = RESET ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Read MCU chip identification number \r\n");
@@ -360,7 +387,7 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 	uint32_t Host_CRC32 = 0 ;
 #endif
 	/* Level of protection */
-	uint8_t RDP_Level = 0 ;
+	uint8_t RDP_Level = RESET ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Read the flash protection out level \r\n");
@@ -433,7 +460,7 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 #endif
 
 	/* Buffering address */
-	uint32_t Host_Jump_Address = 0 ;
+	uint32_t Host_Jump_Address = RESET ;
 	/* TO check on state of given address is in region or not */
 	uint8_t Address_Verification_State = ADDRESS_IS_INVALID ;
 
@@ -471,11 +498,17 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 #endif
 			Bootloader_Send_Data_To_Host((uint8_t *)&Address_Verification_State, 1);
 
-			if (Host_Jump_Address == FLASH_PAGE_BASE_ADDRESS_APP){
+			if (Host_Jump_Address == FLASH_PAGE_BASE_ADDRESS_APP1){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Jump To Application\r\n");
 #endif
-				Bootloader_Jump_To_User_App();
+				Bootloader_Jump_To_User_App1();
+			}
+			else if (Host_Jump_Address == FLASH_PAGE_BASE_ADDRESS_APP2){
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Jump To Application\r\n");
+#endif
+				Bootloader_Jump_To_User_App2();
 			}
 			else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
@@ -510,11 +543,41 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
    2- update size of bootloader code with suitable size as 17k or 15k
    3- update origin address of application code in flash memory in linker script and size also
   */
-static void Bootloader_Jump_To_User_App (){
+static void Bootloader_Jump_To_User_App1 (){
 	/* Value of the main stack pointer of our main application find at address 0 in IVT */
-	uint32_t MSP_Value = *((volatile uint32_t*)FLASH_PAGE_BASE_ADDRESS_APP);
+	uint32_t MSP_Value = *((volatile uint32_t*)FLASH_PAGE_BASE_ADDRESS_APP1);
 	/* Reset Handler defination function of our main application */
-	uint32_t MainAppAddr = *((volatile uint32_t*)(FLASH_PAGE_BASE_ADDRESS_APP+4));
+	uint32_t MainAppAddr = *((volatile uint32_t*)(FLASH_PAGE_BASE_ADDRESS_APP1+4));
+
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Jump to application\r\n");
+#endif
+
+	/* Declare pointer to function contain the beginning address of reset function in user application */
+	pFunc ResetHandler_Address = (pFunc)MainAppAddr;
+
+	/* Deinitionalization of modules that used in bootloader and work
+	   the configurations of new application */
+	HAL_RCC_DeInit(); /* Resets the RCC clock configuration to the default reset state. */
+
+	/* Reset main stack pointer */
+	__set_MSP(MSP_Value);
+
+	/* Jump to Apllication Reset Handler */
+	ResetHandler_Address();
+}
+
+/*
+ Be sure that
+   1- base address in application is updated in (Bootloader_Jump_To_User_App)
+   2- update size of bootloader code with suitable size as 17k or 15k
+   3- update origin address of application code in flash memory in linker script and size also
+  */
+static void Bootloader_Jump_To_User_App2 (){
+	/* Value of the main stack pointer of our main application find at address 0 in IVT */
+	uint32_t MSP_Value = *((volatile uint32_t*)FLASH_PAGE_BASE_ADDRESS_APP1);
+	/* Reset Handler defination function of our main application */
+	uint32_t MainAppAddr = *((volatile uint32_t*)(FLASH_PAGE_BASE_ADDRESS_APP2+4));
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Jump to application\r\n");
@@ -541,7 +604,7 @@ static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Page
 	/* Status of erasing flash */
 	HAL_StatusTypeDef HAL_Status = HAL_ERROR ;
 	/* Error sector status */
-	uint32_t PageError = 0 ;
+	uint32_t PageError = RESET ;
 	/* Define struct to configure parameters[in] */
 	FLASH_EraseInitTypeDef pEraseInit ;
 	/* Define the used bank in flash memory */
@@ -564,7 +627,7 @@ static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Page
 
 		/* Check if he want to erase all memory flash */
 		if ( CBL_FLASH_MASS_ERASE == PageAddress  ){
-			pEraseInit.PageAddress = FLASH_PAGE_BASE_ADDRESS_APP;
+			pEraseInit.PageAddress = FLASH_PAGE_BASE_ADDRESS_APP1;
 			pEraseInit.NbPages = APPLICATION_SIZE;
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Mase erase \r\n");
@@ -609,7 +672,7 @@ static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Page
 /*
  Your packet is :
    1- 1 byte data length = 0x0A
-   2- 1 byte commend number = 0x11
+   2- 1 byte commend number = 0x15
    3- 4 bytes for page address
    4- 1 byte for number of pages
    5- 4 bytes for CRC verifications if we used python code as host
@@ -641,10 +704,17 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 		/* Send acknowledge to host */
 		Bootloader_Send_ACK(1);
 #endif
-		/* Perform Mass erase or sector erase of the yser flash */
-		Erase_Status = Perform_Flash_Erase ( *( (uint32_t*)&Host_Buffer[2] ),Host_Buffer[6]);
-		/* Report the erase state */
-		Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
+
+		/* Perform Mass erase or sector erase of the user flash */
+		if (Host_Buffer[6] == MASTERID ){
+			Erase_Status = Perform_Flash_Erase ( *( (uint32_t*)&Host_Buffer[2] ),Host_Buffer[7]);
+			/* Report the erase state */
+			Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
+		}
+		else {
+			/* Send it to specific node */
+		}
+
 		if ( SUCESSFUL_ERASE == Erase_Status){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Sucessful erased\r\n");
@@ -675,11 +745,11 @@ static uint8_t Flash_Memory_Write_Payload(uint8_t *Host_PayLoad,
 	/* Status writing in flash memory */
 	uint8_t Status = FLASH_PAYLOAD_WRITING_FAILED;
 	/* The number of words in data appliction sections */
-	uint8_t PayLoad_Counter = 0 ;
+	uint8_t PayLoad_Counter = RESET ;
 	/* buffering half word */
-	uint16_t Payload_Buffer = 0 ;
+	uint16_t Payload_Buffer = RESET ;
 	/* address of current writing half word */
-	uint32_t Address = 0 ;
+	uint32_t Address = RESET ;
 
 	/* Writing steps */
 	/* Open flash memory */
@@ -785,15 +855,16 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 		/* Extract the start address from the Host packet */
 		HOST_Address = *((uint32_t *)(&Host_Buffer[2]));
 		/* Extract the payload length from the Host packet */
-		Payload_Len = Host_Buffer[6];
+		Payload_Len = Host_Buffer[8];
 
 		/* Verify the Extracted address to be valid address */
 		Address_Verification = Host_Jump_Address_Verfication(HOST_Address);
 
 		if(ADDRESS_IS_VALID == Address_Verification)
 		{
-			/* Write the payload to the Flash memory */
-			Flash_Payload_Write_Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[7], HOST_Address, Payload_Len);
+			if (Host_Buffer[6] == MASTERID){
+				/* Write the payload to the Flash memory */
+				Flash_Payload_Write_Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[9], HOST_Address, Payload_Len);
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 			BL_PrintMassage ("Correct writing data into memory at %x \r\n",HOST_Address);
@@ -801,6 +872,10 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 
 			/* Report payload writing state */
 			Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
+			}
+			else {
+				/* Send File To specific Node */
+			}
 		}
 		else
 		{
@@ -825,9 +900,161 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 
 }
 
+static void Bootloader_Enable_R_Protection(uint8_t *Host_Buffer){
+	/*
+	 * Protect from any kind of flasher tools (JTAG Comm., ..etc)
+	 * Device works using only supply not flasher.
+	 *
+	 * To Make your flash memory protected from reading
+	 * and if anyone changed the OB bit the memory would got erased
+	 * OB bit is the only unlocked reg while memory protection mode
+	 * The conf for HAL_FLASHEx_OBProgram is
+	 *
+	 *   pOBInit.OptionType = OPTIONBYTE_RDP;
+	 *   pOBInit.RDPLevel = OB_RDP_LEVEL_1;
+	 *
+	 * 1. Unlock the flash.  		HAL_FLASH_Unlock
+	 * 2. Unlock option byte. 		HAL_FLASH_OB_Unlock
+	 * 3. Program option bytes		HAL_FLASHEx_OBProgram
+	 * 4. Lock the flash			HAL_FLASH_Lock
+	 * 5. Lock option byte. 		HAL_FLASH_OB_Lock
+	 * 6. Reset.					HAL_FLASH_OB_Launch
+	 *
+	 *
+	 * */
+	uint8_t Host_ROP_Level = Host_Buffer[2] ;
+	uint8_t ROP_Level_Status = ROP_LEVEL_CHANGE_INVALID;
+
+	if (CBL_ROP_LEVEL_0 == Host_ROP_Level){
+		pOBInit.OptionType = OPTIONBYTE_RDP;
+		pOBInit.RDPLevel = OB_RDP_LEVEL_0;
+
+		HAL_FLASH_Unlock();
+	    HAL_FLASH_OB_Unlock();
+	    HAL_FLASHEx_OBProgram(&pOBInit);
+	    HAL_FLASH_Lock();
+	    HAL_FLASH_OB_Lock();
+	    HAL_FLASH_OB_Launch();
+
+		ROP_Level_Status = ROP_LEVEL_CHANGE_VALID;
+	    Bootloader_Send_Data_To_Host((uint8_t *)&ROP_Level_Status, 1);
+	}
+	else if (CBL_ROP_LEVEL_1 == Host_ROP_Level) {
+		pOBInit.OptionType = OPTIONBYTE_RDP;
+		pOBInit.RDPLevel = OB_RDP_LEVEL_1;
+
+		HAL_FLASH_Unlock();
+		HAL_FLASH_OB_Unlock();
+		HAL_FLASHEx_OBProgram(&pOBInit);
+		HAL_FLASH_Lock();
+		HAL_FLASH_OB_Lock();
+		HAL_FLASH_OB_Launch();
+	}
+}
+
+static void Bootloader_Enable_W_Protection(uint8_t *Host_Buffer){
+	/*
+	 * Protect from any kind of flasher tools (JTAG Comm., ..etc)
+	 * Device works using only supply not flasher.
+	 *
+	 * To Make your flash memory protected from reading
+	 * and if anyone changed the OB bit the memory would got erased
+	 * OB bit is the only unlocked reg while memory protection mode
+	 * The conf for HAL_FLASHEx_OBProgram is
+	 *
+	 *   pOBInit.OptionType = OPTIONBYTE_RDP;
+	 *   pOBInit.RDPLevel = OB_RDP_LEVEL_1;
+	 *
+	 * 1. Unlock the flash.  		HAL_FLASH_Unlock
+	 * 2. Unlock option byte. 		HAL_FLASH_OB_Unlock
+	 * 3. Program option bytes		HAL_FLASHEx_OBProgram
+	 * 4. Lock the flash			HAL_FLASH_Lock
+	 * 5. Lock option byte. 		HAL_FLASH_OB_Lock
+	 * 6. Reset.					HAL_FLASH_OB_Launch
+	 *
+	 *
+	 * */
+
+	uint8_t Host_WP_Level = 0;
+	//uint8_t WP_Level_Status = 0;
+
+
+	Host_WP_Level = Host_Buffer[3];
+
+	if (OB_WRPSTATE_ENABLE == Host_WP_Level) { ////////////////////////
+		pOBInit.OptionType = OPTIONBYTE_WRP;
+		pOBInit.WRPState = OB_WRPSTATE_ENABLE;
+		pOBInit.WRPPage = 0/*Host_Frame[]*/; //@FLASHEx_OB_Write_Protection
+
+		HAL_FLASH_Unlock();
+		HAL_FLASH_OB_Unlock();
+		HAL_FLASHEx_OBProgram(&pOBInit);
+		HAL_FLASH_Lock();
+		HAL_FLASH_OB_Lock();
+		HAL_FLASH_OB_Launch();
+
+//			ROP_Level_Status = ROP_LEVEL_CHANGE_VALID;
+
+		//		Bootloader_Send_Data_To_Host((uint8_t *)&ROP_Level_Status, 1);
+
+	} else if (OB_WRPSTATE_DISABLE == Host_WP_Level) {
+		pOBInit.OptionType = OPTIONBYTE_WRP;
+		pOBInit.WRPState = OB_WRPSTATE_DISABLE;
+		pOBInit.WRPPage = 0/*Host_Frame[]*/; //@FLASHEx_OB_Write_Protection
+
+		HAL_FLASH_Unlock();
+		HAL_FLASH_OB_Unlock();
+		HAL_FLASHEx_OBProgram(&pOBInit);
+		HAL_FLASH_Lock();
+		HAL_FLASH_OB_Lock();
+		HAL_FLASH_OB_Launch();
+
+		///WP_Level_Status = ROP_LEVEL_CHANGE_VALID;
+
+		//Bootloader_Send_Data_To_Host((uint8_t *)&ROP_Level_Status, 1);
+
+	} else {
+		//DO NOTHING
+	}
+}
+
+/*
+ Host_Buffer[0]=
+ Host_Buffer[1]=0x18
+ Host_Buffer[2]=Node Number
+ Host_Buffer[3]=Application Number
+  */
+static void    Bootloader_SetApplication_Flag(uint8_t *Host_Buffer){
+	/* To set application number */
+	uint8_t ECU = Host_Buffer[2];
+	uint8_t APP = Host_Buffer[3] ;
+
+	if (ECU == MASTERID){
+		/* To edit the application flag */
+		if (APP == APPLICATION1){
+			APP1_Flag = TURN_ON;
+			APP2_Flag = TURN_OFF;
+			HAL_NVIC_SystemReset();
+		}
+		else if (APP == APPLICATION2){
+			APP2_Flag = TURN_ON;
+			APP1_Flag = TURN_OFF;
+			HAL_NVIC_SystemReset();
+		}
+		else {
+			/* Warning to ESP */
+		}
+	}
+	else if (ECU >= SLAVE1 && ECU <= SLAVE5){
+		/* Send to slave node */
+	}
+	else {
+		/* warning for ESP */
+	}
+}
 
 void BL_PrintMassage(char *format, ...) {
-	char Message[100] = { 0 };
+	char Message[100] = { RESET };
 	va_list args;
 	/* Enable acess to the variable arguments */
 	va_start(args, format);
