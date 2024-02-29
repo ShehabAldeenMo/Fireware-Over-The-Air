@@ -65,8 +65,8 @@ all: main-build
 main-build: ToggleLed.elf secondary-outputs
 
 # Tool invocations
-ToggleLed.elf ToggleLed.map: $(OBJS) $(USER_OBJS) D:\Embedded\ Track\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\ToggleLed\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "ToggleLed.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"D:\Embedded Track\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\ToggleLed\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ToggleLed.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+ToggleLed.elf ToggleLed.map: $(OBJS) $(USER_OBJS) C:\Local\ D\Embedded\GitHub\ FOTA\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\V1\ToggleLed\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "ToggleLed.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Local D\Embedded\GitHub FOTA\Fireware-Over-The-Air\FirmwareOverTheAir_Workspace\V1\ToggleLed\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ToggleLed.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
