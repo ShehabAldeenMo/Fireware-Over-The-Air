@@ -902,7 +902,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 		Bootloader_Send_ACK(1);
 #endif
 
-		/* Perform Mass erase or sector erase of the yser flash */
+		/* Perform Mass erase or sector erase of the user flash */
 		if (Host_Buffer[6] == MASTERID ){
  80004f0:	687b      	ldr	r3, [r7, #4]
  80004f2:	3306      	adds	r3, #6
