@@ -1,0 +1,5 @@
+../Core/Src/BL_Manager.c:20:6:Write_Program_Flag	24	static
+../Core/Src/BL_Manager.c:32:10:Get_Program_Flag_Status	24	static
+../Core/Src/BL_Manager.c:44:6:BL_Response	16	static
+../Core/Src/BL_Manager.c:83:6:Jump_To_Address	32	static,ignoring_inline_asm
+../Core/Src/BL_Manager.c:117:6:BL_Manager	16	static
