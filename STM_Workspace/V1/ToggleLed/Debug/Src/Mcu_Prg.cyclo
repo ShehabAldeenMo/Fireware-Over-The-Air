@@ -1,7 +1,0 @@
-../Src/Mcu_Prg.c:139:8:Mcu_Init	5
-../Src/Mcu_Prg.c:287:13:Mcu_EnumSetPerAPB1	3
-../Src/Mcu_Prg.c:382:19:Mcu_EnumSetPerAPB2	3
-../Src/Mcu_Prg.c:474:19:Mcu_EnumSetPerAHB	3
-../Src/Mcu_Prg.c:568:7:Mcu_VidRunnable	4
-../Src/Mcu_Prg.c:656:6:Mcu_SetMode	7
-../Src/Mcu_Prg.c:724:6:Mcu_GetVersionInfo	1
