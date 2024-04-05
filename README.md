@@ -1,4 +1,4 @@
-![image](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/2a08e113-3946-44cd-9193-c9e54f316442)![image](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/4bb18892-2070-4bd7-b888-de3197b9d9f8)# Firmware updates Over The Air
+# Firmware updates Over The Air
 This project is to enable remote firmware updates using **ESP32**, **STM32F103C8T6** and **Geogle Firebase**.The **ESP32** connects to **WiFi**, downloads the bootloader and firmware code, and communicates with the STM32.
 ![Screenshot 2024-02-01 104155](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/b0d02c6f-00ba-4343-941e-dbdb82eed83a)
 <br />
@@ -40,7 +40,8 @@ To creat this DashBoard.<br />
 ![3](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/46e2c23c-9ef1-4cb2-b91d-d4a114f3f039)
 <br />
 <br />
-+ How this Dashboard could be worth to our system ?<br />
++  How this Dashboard could be worth to our system ? <br />
+
 Create ESP project on arduino ide on MQTT example on mosquitto server and make our ESP subscribe speific topic like "FOTA/FromBrokerToEsp". <br />
 Make our ESP publish on another topic like "FOTA/FromEspToBroker" and make debug button on node-red to synchronize the debug info to mqtt.  <br />
 <br />
