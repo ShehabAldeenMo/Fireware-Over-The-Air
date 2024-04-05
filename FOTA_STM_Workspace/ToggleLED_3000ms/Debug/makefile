@@ -52,6 +52,12 @@ default.size.stdout \
 OBJDUMP_LIST += \
 ToggleLED_3000ms.list \
 
+OBJCOPY_HEX += \
+ToggleLED_3000ms.hex \
+
+OBJCOPY_BIN += \
+ToggleLED_3000ms.bin \
+
 
 # All Target
 all: main-build
@@ -75,12 +81,22 @@ ToggleLED_3000ms.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS
 	@echo 'Finished building: $@'
 	@echo ' '
 
+ToggleLED_3000ms.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "ToggleLED_3000ms.hex"
+	@echo 'Finished building: $@'
+	@echo ' '
+
+ToggleLED_3000ms.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "ToggleLED_3000ms.bin"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
-	-$(RM) ToggleLED_3000ms.elf ToggleLED_3000ms.list ToggleLED_3000ms.map default.size.stdout
+	-$(RM) ToggleLED_3000ms.bin ToggleLED_3000ms.elf ToggleLED_3000ms.hex ToggleLED_3000ms.list ToggleLED_3000ms.map default.size.stdout
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_HEX) $(OBJCOPY_BIN)
 
 fail-specified-linker-script-missing:
 	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'
