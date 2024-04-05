@@ -39,7 +39,7 @@ To creat this DashBoard.<br />
 ![4](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/f0a3ac6f-07d1-4455-a9f5-8809f6f2854b)
 ![3](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/46e2c23c-9ef1-4cb2-b91d-d4a114f3f039)
 <br />
-<br />
+
 + How this Dashboard could be worth to our system ? <br />
 Create ESP project on arduino ide on MQTT example on mosquitto server and make our ESP subscribe speific topic like "FOTA/FromBrokerToEsp". <br />
 Make our ESP publish on another topic like "FOTA/FromEspToBroker" and make debug button on node-red to synchronize the debug info to mqtt.  <br />
@@ -52,6 +52,7 @@ ESP get each string from broker and based on it , ESP will form specific frames 
 + How Master ECU do communicate with other branchs ? <br />
 using uart connections.
  <br />
+ 
 + How to handle application on ECU ?  <br />
 At first we send our program by commend from mqtt to ESP called "Write program". <br />
 ESP will download file from **Firebase** and send it to stm in speific address that you specify it before through dashboard. <br />
@@ -59,6 +60,7 @@ Through dashboard, We will send order to jump to application. Bootloader will wr
 Each reset in system bootloader asks at first about this flag. If it is valid, Bootloader will jump on it. <br />
 If application receive order to jump to bootloader, We will clear this flag and reset our reset. <br />
  <br />
+ 
 + How to prevent hacker to write or read on our ECU that already written on Flash memory ? <br />
 We will make protection level of our flash memory level 1 in write and read.  <br />  <br />
 
