@@ -37,32 +37,36 @@
 #define STORAGE_BUCKET_ID "fota-70b84.appspot.com"
 
 /*Change Read protection Config*/
-#define CBL_CHANGE_ROP_Level_CMD                0x17
-#define CBL_ROP_LEVEL_0                         0x00
-#define CBL_ROP_LEVEL_1                         0x01
-#define RP_LENGTH                               0x02
+#define CBL_ROP_LEVEL_0                      0x00
+#define CBL_ROP_LEVEL_1                      0x01
+#define RP_LENGTH                            0x03
+
+#define CBL_GET_VER_CMD                      0x10
+#define CBL_GET_RDP_STATUS_CMD               0x11 /* Read the flash protection level command */
+#define JUMP_TO_APPLICATION_CMD              0x12
+#define CBL_FLASH_ERASE_CMD                  0x13 
+#define CBL_MEM_WRITE_CMD                    0x14
+#define CBL_CHANGE_ROP_Level_CMD             0x15
+#define CBL_CHANGE_WOP_Level_CMD             0x16
+
 
 /*Read read protection*/
 #define OB_RDP_LEVEL_0                       ((uint8_t)0xA5)
 #define OB_RDP_LEVEL_1                       ((uint8_t)0x00)
 #define READ_RP                              0x00
 #define READ_WP                              0x01
-#define CBL_GET_RDP_STATUS_CMD               0x13 /* Read the flash protection level command */
 #define WRITE_IS_ENABLE                      0x00 //This Mask is only for low densties to check if All the 32 pages are write protected(it should changed for higher densties STM)
 #define WRITE_IS_DISABLE                     0xFF //This Mask is only for low densties to check if All the 32 pages are write protected(it should changed for higher densties STM)
 
 /*Change Write protection Config*/
-#define CBL_CHANGE_WOP_Level_CMD                0x19
 #define OB_WRPSTATE_DISABLE                     0x00
 #define OB_WRPSTATE_ENABLE                      0x01
-#define WP_LENGTH                               0x02
+#define WP_LENGTH                               0x03
 
 /*Read version Config*/
-#define CBL_GET_VER_CMD                         0x10
 #define VER_LENGTH                              0x02
 
 /*MCU ID config*/
-#define CBL_GET_CID_CMD                         0x11
 #define MCUID_LENGTH                            0x02
 
 /*Define the WiFi credentials */
@@ -73,8 +77,6 @@
 /*Configrations*/
 #define USED                0x01
 #define NOT_USED            0x00
-#define SerialMonitor_RP    NOT_USED     //Change protection level of STM using Serial Monitor
-#define NodeRed_RP          USED         //Change protection level of STM using Node-Red
 
 /*Config Master and slave ECUS*/
 #define MASTERID                                0x00
@@ -82,7 +84,6 @@
 
 /*Write Program definitions*/
 #define TWOBYTES                          16       
-#define CBL_MEM_WRITE_CMD                 0x16
 #define MAX_MEM_WRITE_TOT_Length          72
 #define MAX_MEM_WRITE_DATA_Length         64
 #define ADDRESS_M_WRITE_INDEX             2 /* Index of address in packet from esp to stm */
@@ -93,7 +94,6 @@
 #define FLASH_PAYLOAD_WRITING_PASSED      0x01
 
 /*Erase Memory definitions*/
-#define CBL_FLASH_ERASE_CMD                     0x15 
 #define FLASH_ERASE_LENGTH                      7
 #define FLASH_ERASE_PACKET_LENGTH               8
 #define FLASH_ERASE_ADDRESS_INDEX               2
@@ -107,15 +107,15 @@
 /*APP definitions*/
 #define FLASH_BASE_ADDRESS            0x08000000   /* Flash base address of our micro-controller */
 #define APPLICATION1_OFFEST           0x5000       /* Application 1 base address */
-#define APPLICATION2_OFFEST           0xA000           /* Application 1 base address */
+#define APPLICATION2_OFFEST           0xA000           /* Application 2 base address */
 #define APPLICATION1                  1
 #define APPLICATION2                  2
 #define MQTT_MESSAGE_RESET_VALUE      0xFFFFFFFF
-#define JUMP_TO_APPLICATION_CMD       0x18
-#define JUMP_TO_APP_LENGTH            3
-#define JUMP_TO_APP_PACKET_LENGTH     4
+#define JUMP_TO_APP_LENGTH            6
+#define JUMP_TO_APP_PACKET_LENGTH     0x07
 #define BL_BEGIN_MATCH                0xAA
 #define BL_BEGIN_NOT_MATCH            0xEE
+#define RESET_ECU                     0xCC
 
 
 
@@ -169,7 +169,7 @@ String Compare_R_RP = "Read_RP";
 String Compare_Write_Program = "Write_Program";
 String Compare_Jump_To_App = "Jump_App";
 String Compare_Jump_To_BL = "Jump_BL";
-
+String Compare_Reset_ECU = "Reset_ECU";
 
 /****************************************************************************
  *************************  Functions Definitions  ***************************
@@ -570,11 +570,6 @@ void Erase_Memory(void)
 		digitalWrite(led,LOW);//For debug	
 
 	}
-	else
-	{
-		/*Do nothing*/
-	}
-
 }
 
 
@@ -686,8 +681,8 @@ void Write_Program(void)
 
 	string = "";
 	file.close();
-	Serial.println();////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	Serial.println("Ending of Sending File Function");///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////   
+	Serial.println();
+	Serial.println("Ending of Sending File Function");  
 	client.publish("FromEspToBroker","Uploading Finish");      
 
 	digitalWrite(led,LOW);//For debug
@@ -765,6 +760,8 @@ void Read_Protection_Level(void)
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_GET_RDP_STATUS_CMD);
 		delay(3);  //You must put delay to prevent Uart overrun
+    Serial2.write(ECU);
+		delay(3);  //You must put delay to prevent Uart overrun
 		Serial2.write(READ_RP);
 		delay(3); //You must put delay to prevent Uart overrun
 		digitalWrite(led,HIGH);//For debug
@@ -780,6 +777,8 @@ void Read_Protection_Level(void)
 		Serial2.write(WP_LENGTH);
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_GET_RDP_STATUS_CMD);
+    delay(3);  //You must put delay to prevent Uart overrun
+    Serial2.write(ECU);
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(READ_WP);
 		delay(3); //You must put delay to prevent Uart overrun
@@ -792,7 +791,7 @@ void Read_Protection_Level(void)
 	}
 	else
 	{
-		/*Do nothing*/
+		client.publish("FromEspToBroker", "Error When getting Protection Level!!, Please try again");
 	}
 }
 
@@ -804,28 +803,22 @@ void Read_Protection_Level(void)
 void Ack_WP(void)
 {
 	/*To Take ack from read protection*/
-	char i = 0;
-	char Buf[10];
+	char Buf;
 
 	while(Serial2.available()>0)
 	{
-		Buf[i] = Serial2.read();
-		i++;
+		Buf= Serial2.read();
 	}
 
-
-	Serial.printf("Change WP to %s", Buf);
-	Serial.println();
-
-	if(Buf[6] == '0')
+	if(Buf == 0x00)
 	{
 		digitalWrite(led,LOW); //For debug
-		client.publish("FromEspToBroker","Change WP to level 0");
+		client.publish("FromEspToBroker","WP haven't been changed");
 	}
-	else  if(Buf[6] == '1')
+	else if (Buf == 0x01)
 	{
 		digitalWrite(led,LOW); //For debug
-		client.publish("FromEspToBroker","Change WP to level 1");
+		client.publish("FromEspToBroker","WP have been changed");
 	}
 	else
 	{
@@ -847,6 +840,8 @@ void  Change_WP(void)
 		Serial2.write(WP_LENGTH);
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_CHANGE_WOP_Level_CMD);
+    delay(3); //You must put delay to prevent Uart overrun
+		Serial2.write(ECU);
 		delay(3);  //You must put delay to prevent Uart overrun
 		Serial2.write(OB_WRPSTATE_DISABLE);
 		delay(3); //You must put delay to prevent Uart overrun
@@ -863,6 +858,8 @@ void  Change_WP(void)
 		Serial2.write(WP_LENGTH);
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_CHANGE_WOP_Level_CMD);
+    delay(3); //You must put delay to prevent Uart overrun
+		Serial2.write(ECU);
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(OB_WRPSTATE_ENABLE);
 		delay(3); //You must put delay to prevent Uart overrun
@@ -875,7 +872,7 @@ void  Change_WP(void)
 	}
 	else
 	{
-		/*Do nothing*/
+		client.publish("FromEspToBroker","Change WP to level Failled!!, Please try again");
 	}
 }
 
@@ -941,68 +938,6 @@ void Select_App(void)
 }
 
 
-
-
-
-
-
-
-void Ack_MCU_ID(void)
-{
-	/*To Take ack from read protection*/
-	char i =0;
-	// Create a character array to hold the formatted result
-	char formattedBuf[3]; // Adjust the size as needed
-	byte Buf[10];
-
-	while(Serial2.available()>0)
-	{
-		Buf[i] = Serial2.read();
-		i++; //To add . between versions
-	}
-
-
-	// Format the values from buf into the desired string format
-	snprintf(formattedBuf, sizeof(formattedBuf), "%d%d", Buf[0], Buf[1]);
-
-	Serial.println(formattedBuf);
-	Serial.printf("Identification number of ECU is %s", formattedBuf);
-	Serial.println();
-
-
-	client.publish("FromEspToBroker", formattedBuf);
-
-	digitalWrite(led,LOW); //for debug
-}
-
-
-
-
-
-
-
-void Read_MCU_ID(void)
-{
-
-	Serial2.write(MCUID_LENGTH);
-	delay(3); //You must put delay to prevent Uart overrun
-	Serial2.write(CBL_GET_CID_CMD);
-	delay(3); //You must put delay to prevent Uart overrun
-  Serial2.write(ECU);
-	delay(3); //You must put delay to prevent Uart overrun
-	digitalWrite(led,HIGH);//For debug
-
-	Ack_MCU_ID();
-
-	string = ""; //Clear string to avoid multiple entering
-}
-
-
-
-
-
-
-
 void Ack_VER(void)
 {
 	/*To Take ack from read protection*/
@@ -1017,6 +952,10 @@ void Ack_VER(void)
 		i++; //To add . between versions
 	}
 
+  if ( Buf[0] == 0xAA || Buf[1] == 0xAA ){
+    client.publish("FromEspToBroker", "Error in get version function");
+    return ;
+  }
 
 	// Format the values from buf into the desired string format
 	snprintf(formattedBuf, sizeof(formattedBuf), "%d.%d.%d.%d", Buf[0], Buf[1], Buf[2], Buf[3]);
@@ -1030,9 +969,6 @@ void Ack_VER(void)
 
 	digitalWrite(led,LOW); //for debug
 }
-
-
-
 
 
 
@@ -1061,103 +997,40 @@ void Read_BL_Version(void)
 void Ack_RP(void)
 {
 	/*To Take ack from read protection*/
-	char i =0;
-	char Buf[10];
+	char Buf;
 
 	while(Serial2.available()>0)
 	{
-		Buf[i] = Serial2.read();
-		i++;
+		Buf= Serial2.read();
 	}
 
-	if(i == 8)
+	if(Buf == 0x00)
 	{
-		Serial.printf("Change RP to %s", Buf);
-		Serial.println();
-
-		if(Buf[6] == '0')
-		{
-			digitalWrite(led,LOW); //For debug
-			client.publish("FromEspToBroker","Change RP to level 0");
-		}
-		else  if(Buf[6] == '1')
-		{
-			digitalWrite(led,LOW); //For debug
-			client.publish("FromEspToBroker","Change RP to level 1");
-		}
-		else
-		{
-			digitalWrite(led,LOW); //For debug
-			client.publish("FromEspToBroker","Change RP to level Failed!!, Please try again");
-		}
-
+		digitalWrite(led,LOW); //For debug
+		client.publish("FromEspToBroker","RP haven't been changed");
+	}
+	else if ( Buf == 0x01)
+	{
+		digitalWrite(led,LOW); //For debug
+		client.publish("FromEspToBroker","RP have been changed");
+	}
+	else
+	{
+		digitalWrite(led,LOW); //For debug
+		client.publish("FromEspToBroker","Change RP to level Failled!!, Please try again");
 	}
 }
 
 
-
-
-
-
-
-/*Change Read Protection*/
-/**
-Necssary Setups:
-1-Using UART0(USB) to receive
-2-Using UART2      to send
-
-
-Algorithm:
-1-Receive 'L' -> send 3
-2-Receive 'C' -> send CBL_CHANGE_ROP_Level_CMD
-3.1- Receve 'D' -> send CBL_ROP_LEVEL_0
-3.2 Receve 'E' -> send CBL_ROP_LEVEL_1
-
-Example:
-Send on Serail Monitor LCD -> Change RP to Level 0
-Send on Serail Monitor LCE -> Change RP to Level 1
-
- */
 void Change_RP(void)
 {
-#if(SerialMonitor_RP ==   USED)    //Change protection level of STM using Serial Monitor
-	char var = 0;
-	while(Serial.available()>0)
-	{
-		var = Serial.read();
-		if(var == 'L')
-		{
-			Serial2.write(RP_LENGTH);
-			digitalWrite(led,HIGH);
-		}
-		else if(var == 'C')
-		{
-			Serial2.write(CBL_CHANGE_ROP_Level_CMD);
-			digitalWrite(led,HIGH);
-
-		}
-		else if(var == 'D')
-		{
-			Serial2.write(CBL_ROP_LEVEL_0);
-			digitalWrite(led,LOW);
-
-		}
-		else if(var == 'E')
-		{
-			Serial2.write(CBL_ROP_LEVEL_1);
-			digitalWrite(led,LOW);
-		}
-
-	}
-
-	Ack_RP();
-
-#elif(NodeRed_RP == USED) //Change protection level of STM using Node-Red)
 	if(string == Compare_RPL0)
 	{
 		Serial2.write(RP_LENGTH);
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_CHANGE_ROP_Level_CMD);
+		delay(3);  //You must put delay to prevent Uart overrun
+    Serial2.write(ECU);
 		delay(3);  //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_ROP_LEVEL_0);
 		delay(3); //You must put delay to prevent Uart overrun
@@ -1173,6 +1046,8 @@ void Change_RP(void)
 		delay(3); //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_CHANGE_ROP_Level_CMD);
 		delay(3); //You must put delay to prevent Uart overrun
+    Serial2.write(ECU);
+		delay(3);  //You must put delay to prevent Uart overrun
 		Serial2.write(CBL_ROP_LEVEL_1);
 		delay(3); //You must put delay to prevent Uart overrun
 		digitalWrite(led,HIGH); //For debug
@@ -1183,61 +1058,55 @@ void Change_RP(void)
 	}
 	else
 	{
-		/*Do nothing*/
+		client.publish("FromEspToBroker","Change RP to level Failed!!, Please try again");
 	}
-#endif
 }
 
 
 void Jump_To_App(void)
 {
+	uint8_t Packet[JUMP_TO_APP_PACKET_LENGTH];
+	char i;
+
 	/*Notify user beginning of Jumping to App process */
 	digitalWrite(led,HIGH);//For debug
 	client.publish("FromEspToBroker","Jumping to App..");
 
 	/*Jumping to App Packet formation */
-	uint8_t Packet[JUMP_TO_APP_PACKET_LENGTH];
 	Packet[0] = JUMP_TO_APP_LENGTH;
 	Packet[1] = JUMP_TO_APPLICATION_CMD;
-	Packet[2] = ECU;
-	Packet[3] = App;
+	*(int*)(&Packet[2]) = Address;
+	Packet[6] = ECU;
 
 	/*Packet transmitting */
 	Serial2.write(Packet[0]);//Send first the length of Packet
-	char i;
 	delay(1);//Must Delay to sychnorize
+
 	for (i = 1; i < JUMP_TO_APP_PACKET_LENGTH; i++)
 	{
+    Serial.printf("\nPacket[%i]=%x",i,Packet[i]);
 		Serial2.write(Packet[i]);
 	} 
 
 	/*Reinitializing to prevent continous logging*/
 	string = "";
-	digitalWrite(led,LOW);//For debug	
 }
-
-
-
-
-
-
-
-
 
 
 void Jump_To_BL(void)
 {
+  /*Receive Ack*/
+  uint8_t Ack = 0;
+
   /*Notify user beginning of Jumping to App process */
 	digitalWrite(led,HIGH);//For debug
 	client.publish("FromEspToBroker","Jumping to Bootloader..");
 
 	/*Packet transmitting to notify App to jump to bootloader*/
 	Serial2.write(BL_BEGIN_MATCH);
-
-  /*Receive Ack*/
-  uint8_t Ack = 0;
   delay(10);//To avoid bugs if Uart of STM send data after ESP read it
-	while(Serial2.available()>0)
+	
+  while(Serial2.available()>0)
 	{
 		Ack = Serial2.read();
 	}
@@ -1251,24 +1120,24 @@ void Jump_To_BL(void)
   {
     client.publish("FromEspToBroker", "Receive Nack from BL jump function in STM!!");
   }
-  else
-  {
-    client.publish("FromEspToBroker", "Undefined behaviour from BL jump function in STM!!");
-  }
 
   /*Reinitializing to prevent continous logging*/
 	string = "";
 	digitalWrite(led,LOW);//For debug	
 }
 
+void Reset_Function (){
+	digitalWrite(led,HIGH);//For debug
+	client.publish("FromEspToBroker","Reset ECU");
 
+	/*Packet transmitting to notify App to jump to bootloader*/
+	Serial2.write(RESET_ECU);
+  delay(10);//To avoid bugs if Uart of STM send data after ESP read it
 
-
-
-
-
-
-
+  /*Reinitializing to prevent continous logging*/
+	string = "";
+	digitalWrite(led,LOW);//For debug	
+}
 
 void Select_Function(void)
 {
@@ -1277,15 +1146,25 @@ void Select_Function(void)
 		/*Allow Changing read protection level*/
 		Change_RP();
 	}
+  else if((string == Compare_WP_D) || (string == Compare_WP_E))
+	{
+		/*Allow Changing write protection level*/
+		Change_WP();
+	}
 	else if(string == Compare_VER)
 	{
 		/*Reading version of STM bootloader*/
 		Read_BL_Version();
 	}
-	else if(string == Compare_MCUID)
+  else if((string == Compare_R_WP) || (string == Compare_R_RP))
 	{
-		/*Reading MCU ID of STM*/
-		Read_MCU_ID();
+		/*Read protection level*/
+		Read_Protection_Level();
+	}
+  else if(string == Compare_Write_Program)
+	{
+		/*Write dedicated App to dedicated ECU*/
+		Write_Program();
 	}
 	else if((string == Compare_APP1) || (string == Compare_APP2))
 	{
@@ -1297,21 +1176,6 @@ void Select_Function(void)
 		/*Select which ECU to communicate with*/
 		Select_ECU();
 	}
-	else if((string == Compare_WP_D) || (string == Compare_WP_E))
-	{
-		/*Allow Changing write protection level*/
-		Change_WP();
-	}
-	else if((string == Compare_R_WP) || (string == Compare_R_RP))
-	{
-		/*Read protection level*/
-		Read_Protection_Level();
-	}
-	else if(string == Compare_Write_Program)
-	{
-		/*Write dedicated App to dedicated ECU*/
-		Write_Program();
-	}
 	else if(string == Compare_Jump_To_App)
 	{
 		Jump_To_App();
@@ -1319,6 +1183,9 @@ void Select_Function(void)
   else if(string == Compare_Jump_To_BL)
   {
     Jump_To_BL();
+  }
+  else if (string == Compare_Reset_ECU){
+    Reset_Function();
   }
 	else
 	{
