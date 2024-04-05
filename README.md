@@ -40,13 +40,15 @@ To creat this DashBoard.<br />
 ![3](https://github.com/ShehabAldeenMo/Fireware-Over-The-Air/assets/114957788/46e2c23c-9ef1-4cb2-b91d-d4a114f3f039)
 <br />
 <br />
-+  How this Dashboard could be worth to our system ? <br />
++ How this Dashboard could be worth to our system ? <br />
 Create ESP project on arduino ide on MQTT example on mosquitto server and make our ESP subscribe speific topic like "FOTA/FromBrokerToEsp". <br />
 Make our ESP publish on another topic like "FOTA/FromEspToBroker" and make debug button on node-red to synchronize the debug info to mqtt.  <br />
 <br />
+
 + How ESP could affect on master ECU ?  <br />
 ESP get each string from broker and based on it , ESP will form specific frames suitable for bootloader and send it thruogh uart.
  <br />
+ 
 + How Master ECU do communicate with other branchs ? <br />
 using uart connections.
  <br />
