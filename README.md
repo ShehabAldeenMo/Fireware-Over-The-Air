@@ -9,7 +9,7 @@ This project is to enable remote firmware updates using **ESP32**, **STM32F103C8
 2. [Hardware Connection](#Hardware-Connection)
 3. [Problems And Solutions](#Problems-And-Solutions)
 4. [Main Features](#Main-Features)
-7. [New_Features](#New-Features)
+7. [New Features](#New-Features)
 <br />
 
 ## Introduction
