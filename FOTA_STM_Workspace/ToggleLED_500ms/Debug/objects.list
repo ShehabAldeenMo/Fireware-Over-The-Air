@@ -5,6 +5,7 @@
 "./Core/Src/syscalls.o"
 "./Core/Src/sysmem.o"
 "./Core/Src/system_stm32f1xx.o"
+"./Core/Src/usart.o"
 "./Core/Startup/startup_stm32f103c8tx.o"
 "./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.o"
 "./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.o"
@@ -17,3 +18,4 @@
 "./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.o"
 "./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.o"
 "./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc_ex.o"
+"./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.o"
