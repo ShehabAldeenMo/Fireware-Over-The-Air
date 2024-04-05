@@ -38,16 +38,13 @@
 /*============================================================================
  *************************  User Configurations  *****************************
  ============================================================================*/
-/* User configurations */
-#define ESP        DISABLE
-
 /*
- * if you want to work with realterm debugging info make
+ * Notes :
+ * 1- if you want to work with realterm debugging info make
  * BL_DEBUG_ENABLE DEBUG_INFO_ENABLE and define its uart1 or 2
+ *
+ * 2- if you are slave, Host is regarded as tree
  */
-
-/* if you are slave, Host is regarded as tree
- * */
 
 #define BL_DEBUG_UART                           &huart1 /* defination of communcation protocal in debuging without host port */
 #define BL_DEBUG_ENABLE                         DEBUG_INFO_DISABLE /* Enable when you use BL_DEBUG_UART different from BL_HOST_COMMUNICATION_UART */
