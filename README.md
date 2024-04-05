@@ -41,7 +41,6 @@ To creat this DashBoard.<br />
 <br />
 <br />
 +  How this Dashboard could be worth to our system ? <br />
-
 Create ESP project on arduino ide on MQTT example on mosquitto server and make our ESP subscribe speific topic like "FOTA/FromBrokerToEsp". <br />
 Make our ESP publish on another topic like "FOTA/FromEspToBroker" and make debug button on node-red to synchronize the debug info to mqtt.  <br />
 <br />
