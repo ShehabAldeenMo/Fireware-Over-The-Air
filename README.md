@@ -48,7 +48,7 @@ ESP get each string from broker and based on it , ESP will form specific frames 
  <br />
  
 + How Master ECU do communicate with other branchs ? <br />
-using uart connections.
+using CAN protocal tree to communicate between master ECU and each node in this tree.
  <br />
  
 + How to handle application on ECU ?  <br />
@@ -62,8 +62,11 @@ If application receive order to jump to bootloader, We will clear this flag and 
 + How to prevent hacker to write or read on our ECU that already written on Flash memory ? <br />
 We will make protection level of our flash memory level 1 in write and read.  <br />  <br />
 
++ How can uou test this project ? <br />
+You can follow this videos on our channel "yyyyyyyyy".  <br />  <br />
+
 ## Main Features
-### Current Features
+This features are available for each node or thre master. <br /> 
 + **Get software version**: Vendor Id, Major version, Minor version, Patch Id.
 + **Read protection level**: Read the protection level of flash memory.
 + **Jump to address**: Jump to specific address if it's application address or any one other to implement this function 
@@ -71,8 +74,4 @@ We will make protection level of our flash memory level 1 in write and read.  <b
 + **Memory write**: To write on specific pages in flash memory.
 + **Enable/Disable write protection level**: protect flash memory from writing on it or disabled.
 + **Enable/Disable read protection level**: protect  flash memory from reading on it or disabled.
-
-## New Features
-Master branch will detect if this commend belong to them or not. If It's not belong to it,It will transmit the commend using CAN protocol. Use openssl in encrption and decryption files. 
-
 
