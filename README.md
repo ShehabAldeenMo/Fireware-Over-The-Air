@@ -66,7 +66,7 @@ We will make protection level of our flash memory level 1 in write and read.  <b
 You can follow this videos on our channel "yyyyyyyyy".  <br />  <br />
 
 ## Main Features
-This features are available for each node or thre master. <br /> 
+This features are available for each node or the master. <br /> 
 + **Get software version**: Vendor Id, Major version, Minor version, Patch Id.
 + **Read protection level**: Read the protection level of flash memory.
 + **Jump to address**: Jump to specific address if it's application address or any one other to implement this function 
