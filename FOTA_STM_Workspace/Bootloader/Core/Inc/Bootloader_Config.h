@@ -1,6 +1,6 @@
 /*============================================================================
  * @file name      : Bootloader_Config.h
- * @Author         : Shehab aldeen mohammed, Ali Mamdouh
+ * @Author         : Shehab aldeen mohammed, Ali Mamdouh, Reem Mahmoud
  *
  ============================================================================
  * @Notes:
@@ -58,9 +58,12 @@
 /* define which communication protocal to communicate with realterm or esp */
 #define BL_HOST_COMMUNICATION_UART              &huart1 /* defination of communcation protocal with host */
 
-/* define which communication protocal to communicate on tree */
-#define BL_TREE_COMMUNICATION_UART              &huart2 /* defination of communcation protocal with host */
-
+/* define which communication protocal to communicate on tree
+ * Communicate by uart "&huart2"
+ * Communicate by CAN  "&hcan" and BL_CAN "ENABLE"
+ *  */
+#define BL_TREE_COMMUNICATION              &hcan /* defination of communcation protocal with host */
+#define BL_CAN                             ENABLE
 
 /* That is the versions of your code and vendor id's */
 #define CBL_VENDOR_ID                           100

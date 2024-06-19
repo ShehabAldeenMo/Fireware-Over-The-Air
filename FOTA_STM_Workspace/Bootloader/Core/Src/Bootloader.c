@@ -1,6 +1,6 @@
 /*============================================================================
  * @file name      : Bootloader.c
- * @Author         : Shehab aldeen mohammed, Ali Mamdouh
+ * @Author         : Shehab aldeen mohammed, Ali Mamdouh, Reem Mahmoud
  *
  =============================================================================
  * @Notes:
@@ -459,7 +459,13 @@ static void    Bootloader_Jump_To_User_App2 ();
  * \section Return_value
  * None
  */
-static void    BL_Manager(void);
+static void   BL_Manager(void);
+
+
+static void CAN_Select_Func(void);
+static void CAN_Read_WP_Level(void);
+static void CAN_Read_RP_Level(void);
+static void Write_Program_Flag(uint32_t Address, uint32_t Value);
 
 /*============================================================================
  *********************  Static global Variables Definations  *****************
@@ -484,18 +490,63 @@ static BL_pFunc Bootloader_Functions [NumberOfCommends] = {&Bootloader_Get_Versi
 		&Bootloader_Erase_Flash,&Bootloader_Memory_Write,&Bootloader_Enable_R_Protection,
 		&Bootloader_Enable_W_Protection} ;
 
-
-
-
 static uint32_t FLAG_APP_ON  = 0xAAAAAAAA ;
 static uint32_t FLAG_APP_OFF = 0xEEEEEEEE ;
+
+
+uint8_t BL_FiFO0_Flag;
+
+#if(BL_CAN == ENABLE)
+CAN_TxHeaderTypeDef BL_TxHeader;
+CAN_RxHeaderTypeDef BL_RxHeader;
+CAN_RxHeaderTypeDef BL_RxHeaderReceive;
+
+uint32_t BL_TxMailbox[4];
+
+uint8_t BL_TxData[8];
+uint8_t BL_RxData[8];
+
+uint8_t BL_CAN_ReceiveCounter0 = 0;
+uint8_t BL_CAN_ReceiveFlag0 = 0;
+uint8_t BL_CAN_ByteCounter0 = 0;
+#endif
 
 /*============================================================================
  ***********************  Software Interface Definations  ********************
  ============================================================================*/
 BL_Status BL_Fetch_Commend(void) {
+
 	/* To detect the status of function */
 	BL_Status Status = BL_NACK;
+
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == SLAVE1))
+	/*Allow Callback FIFO0 MSG pending to execute, to Handle both receiving with FIFO1(Polling) and FIFO0(interrupt) */
+	HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING |CAN_IT_ERROR |CAN_IT_LAST_ERROR_CODE);
+
+	/*Polling on CAN frames that come from FIFO1(FIFO1 is designed for remote frames)*/
+	while(HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO1) == 0) //Polling until there is any message received
+	{
+		if(BL_FiFO0_Flag != 0) //Break from infinite loop if message stored in FIFO0(BL_FiFO0_Flag is set if FIFO0_Msg_pending call back is called)
+		{
+			break;
+		}
+	}
+
+	/*Receive the message that stored in either FIFO1 or FIFO0*/
+	if(BL_FiFO0_Flag != 0) //Means message stored in FIFO0
+	{
+		BL_FiFO0_Flag = 0;
+		HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &BL_RxHeader, BL_RxData); //Receive from FIFO0
+	}
+	else //Means message stored in FIFO1
+	{
+		HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO1, &BL_RxHeader, BL_RxData); //Receive from FIFO1
+	}
+
+	/*Select which BL_Function to call based on message_ID and Filter_match_index*/
+	CAN_Select_Func();
+
+#else
 
 	/* To detect the status of uart in transmitting and receiving data */
 	HAL_StatusTypeDef HAL_Status = HAL_ERROR;
@@ -559,6 +610,7 @@ BL_Status BL_Fetch_Commend(void) {
 			}
 		}
 	}
+#endif
 	return Status;
 }
 
@@ -569,7 +621,9 @@ static void Bootloader_Send_Data_To_Host(uint8_t* Host_Buffer , uint32_t Data_Le
 
 /* Function to communicate with tree */
 static void Bootloader_Send_Data_To_Tree(uint8_t* Host_Buffer , uint32_t Data_Len , uint32_t Time_To_Transmit){
-	HAL_UART_Transmit(BL_TREE_COMMUNICATION_UART,Host_Buffer,(uint16_t) Data_Len, Time_To_Transmit);
+#if (BL_CAN == DISABLE)
+	HAL_UART_Transmit(BL_TREE_COMMUNICATION,Host_Buffer,(uint16_t) Data_Len, Time_To_Transmit);
+#endif
 }
 
 /*
@@ -579,27 +633,41 @@ static void Bootloader_Send_Data_To_Tree(uint8_t* Host_Buffer , uint32_t Data_Le
    3- 1 byte to define that is for master ECU or slave ECU "Maser = 0x00 , slave = 0x01:0x05"
  */
 static void Bootloader_Get_Version (uint8_t *Host_Buffer){
+
 	/* Sending the version and vendor id's to meet the target from command */
-	uint8_t BL_Version[4] = { CBL_VENDOR_ID, CBL_SW_MAJOR_VERSION,
+	const uint8_t BL_Version[4] = { CBL_VENDOR_ID, CBL_SW_MAJOR_VERSION,
 			CBL_SW_MINOR_VERSION, CBL_SW_PATCH_VERSION};
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-	BL_PrintMassage ("Read Bootloader Version \r\n");
+	BL_PrintMassage ("Read bootloader version \r\n");
 #endif
 
-	/* To check that the coming id for master_id or slave_id */
-	if (MASTERID == Host_Buffer[2]) {
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == SLAVE1))
 
-		/* If you are master and id is master */
+		/*Create and initialise TxHeader*/
+		CAN_TxHeaderTypeDef BL_VerTxHeader;
+		BL_VerTxHeader.DLC = 4;
+		BL_VerTxHeader.ExtId = 0;
+		BL_VerTxHeader.IDE = CAN_ID_STD;
+		BL_VerTxHeader.RTR = CAN_RTR_DATA;
+		BL_VerTxHeader.StdId = CAN_VER_RESP_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+		BL_VerTxHeader.TransmitGlobalTime = DISABLE;
+
+		/*Send Version CAN frame*/
+		HAL_CAN_AddTxMessage(&hcan, &BL_VerTxHeader, BL_Version, BL_TxMailbox);
+		while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+#else
+		if(MASTERID == Host_Buffer[2])
+		{
+
 #if(ECU_CONFIG == MASTERID)
-
-		Bootloader_Send_Data_To_Host(BL_Version,4);
+			Bootloader_Send_Data_To_Host(BL_Version,4);
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Master Bootloader Version %d.%d.%d.%d\r\n", BL_Version[0],
 				BL_Version[1], BL_Version[2], BL_Version[3]);
 #endif
 
-		/* If you are slave and id is master */
 #elif(ECU_CONFIG == SLAVE1)
 		/* Report Error frame */
 		Bootloader_Send_Data_To_Host((uint8_t*) (&ErrorFrame),1);
@@ -610,39 +678,70 @@ static void Bootloader_Get_Version (uint8_t *Host_Buffer){
 
 #endif
 
-	}
-	else if(SLAVE1 == Host_Buffer[2]){
-		/* If you are master and id is slave */
-#if(ECU_CONFIG == MASTERID)
+		}
+		else if(SLAVE1 == Host_Buffer[2])
+		{
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == MASTERID))
+			/*Transmit CAN VER(MASTER)*/
+			uint8_t BL_Ver[8] = {0};//Length must be 8 or more or undefined behaviour may occur
+			CAN_TxHeaderTypeDef BL_VerTxHeader;
+
+			BL_VerTxHeader.DLC = 4;
+			BL_VerTxHeader.ExtId = 0;
+			BL_VerTxHeader.IDE = CAN_ID_STD;
+			BL_VerTxHeader.RTR = CAN_RTR_REMOTE;
+			BL_VerTxHeader.StdId = CAN_VER_REQ_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+			BL_VerTxHeader.TransmitGlobalTime = DISABLE;
+
+			HAL_CAN_AddTxMessage(&hcan, &BL_VerTxHeader, BL_Ver, BL_TxMailbox);
+			while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+			/*Receive CAN VER(MASTER)*/
+			CAN_RxHeaderTypeDef BL_VerRxHeader;
+
+			do
+			{
+				while(HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) == 0); //Polling until there is any message received
+				HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &BL_VerRxHeader, BL_Ver);
+
+			}while(BL_VerRxHeader.StdId != CAN_VER_RESP_ID);
+
+
+			/*Send Version to ESP*/
+			Bootloader_Send_Data_To_Host(BL_Ver, 4);
+
+
+#elif ((BL_CAN == DISABLE) && (ECU_CONFIG == MASTERID))
 			uint8_t Slave_Version[4];
 			Bootloader_Send_Data_To_Tree(&Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
 			Bootloader_Send_Data_To_Tree(&Host_Buffer[1], Host_Buffer[0], 10); //sending remaining frame, The time must be 10 to avoid errors
-			HAL_UART_Receive(BL_TREE_COMMUNICATION_UART, Slave_Version, 4, HAL_MAX_DELAY); //Receive version
+			HAL_UART_Receive(BL_TREE_COMMUNICATION, Slave_Version, 4, HAL_MAX_DELAY); //Receive version
 			Bootloader_Send_Data_To_Host(Slave_Version,4);
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Slave %d Bootloader Version %d.%d.%d.%d\r\n",SLAVE1 ,Slave_Version[0],
 				Slave_Version[1], Slave_Version[2], Slave_Version[3]);
 #endif
-		/* If you are slave and id is slave */
-#elif(ECU_CONFIG == SLAVE1)
+
+#elif((BL_CAN == DISABLE) && (ECU_CONFIG == SLAVE1))
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("Slave %d Bootloader Version %d.%d.%d.%d\r\n", SLAVE1 ,BL_Version[0],
 				BL_Version[1], BL_Version[2], BL_Version[3]);
 #endif
 			Bootloader_Send_Data_To_Host(BL_Version, 4);
+
 #endif
-	}
-	/* neither nor */
-	else
-	{
-		/* Report Error frame */
-		Bootloader_Send_Data_To_Host((uint8_t*) (&ErrorFrame),1);
+		}
+		else
+		{
+			/* Report Error frame */
+			Bootloader_Send_Data_To_Host((uint8_t*) (&ErrorFrame),1);
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 		BL_PrintMassage("You sent wrong id that is not exist in ECU tree\r\n");
 #endif
-		}
+			}
+#endif
 }
 
 /* Get level of protection to flash memory */
@@ -683,15 +782,73 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 	/* If It's master and id is slave */
 	if (SLAVE1 == Host_Buffer[2]){
 
-#if (ECU_CONFIG == MASTERID)
+#if ((BL_CAN == DISABLE) && (ECU_CONFIG == MASTERID))
 		/* To report statue of protection level */
 		uint8_t Protection_Level = 0;
 
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[1], Host_Buffer[0], 10); //sending remaining frame, The time must be 10 to avoid errors
-		HAL_UART_Receive(BL_TREE_COMMUNICATION_UART, &Protection_Level, 1 , HAL_MAX_DELAY); //Receive version
+		HAL_UART_Receive(BL_TREE_COMMUNICATION, &Protection_Level, 1 , HAL_MAX_DELAY); //Receive Protection Level
 		Bootloader_Send_Data_To_Host((uint8_t*) (&Protection_Level), 1);
 		return ;
+
+#elif ((BL_CAN == ENABLE) && (ECU_CONFIG == MASTERID))
+	/*Transmit CAN Read RP level Request*/
+	uint8_t BL_Read_Level[8] = {0}; //Length must be 8 or more or undefined behaviour may occur
+
+	if (READ_RP == Host_Buffer[3]) {
+		CAN_TxHeaderTypeDef BL_RP_TxHeader;
+
+		BL_RP_TxHeader.DLC = 1;
+		BL_RP_TxHeader.ExtId = 0;
+		BL_RP_TxHeader.IDE = CAN_ID_STD;
+		BL_RP_TxHeader.RTR = CAN_RTR_REMOTE;
+		BL_RP_TxHeader.StdId = CAN_READ_RP_REQ_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+		BL_RP_TxHeader.TransmitGlobalTime = DISABLE;
+
+		HAL_CAN_AddTxMessage(&hcan, &BL_RP_TxHeader, BL_Read_Level, BL_TxMailbox);
+		while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+
+		/*Transmit CAN Read RP level Response*/
+		CAN_RxHeaderTypeDef BL_Read_RP_RxHeader;
+
+		do{
+			/*Read response VER message*/
+			while(HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) == 0); //Polling until there is any message received
+			HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &BL_Read_RP_RxHeader, BL_Read_Level);
+
+		}while(BL_RP_TxHeader.StdId != CAN_READ_RP_RESP_ID);
+	}
+	else if (READ_WP == Host_Buffer[3]) {
+		CAN_TxHeaderTypeDef BL_WP_TxHeader;
+
+		BL_WP_TxHeader.DLC = 1;
+		BL_WP_TxHeader.ExtId = 0;
+		BL_WP_TxHeader.IDE = CAN_ID_STD;
+		BL_WP_TxHeader.RTR = CAN_RTR_REMOTE;
+		BL_WP_TxHeader.StdId = CAN_READ_WP_REQ_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+		BL_WP_TxHeader.TransmitGlobalTime = DISABLE;
+
+		HAL_CAN_AddTxMessage(&hcan, &BL_WP_TxHeader, BL_Read_Level, BL_TxMailbox);
+		while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+
+		/*Transmit CAN Read RP level Response*/
+		CAN_RxHeaderTypeDef BL_Read_WP_RxHeader;
+
+		do
+		{
+			/*Read response VER message*/
+			while(HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) == 0); //Polling until there is any message received
+			HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &BL_Read_WP_RxHeader, BL_Read_Level);
+
+		}while(BL_Read_WP_RxHeader.StdId != CAN_READ_WP_RESP_ID);
+	}
+
+	/*Sending RP to ESP*/
+	Bootloader_Send_Data_To_Host(BL_Read_Level,1);
+	return;
 #endif
 	}
 
@@ -699,24 +856,58 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 	 * If it's master and id is master
 	 *  */
 	if (READ_RP == Host_Buffer[3]) {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Read Protection level = %x\r\n", RDP_Level);
+#endif
+
+#if (ECU_CONFIG == MASTERID) || ( (BL_CAN == DISABLE) && (ECU_CONFIG == SLAVE1) )
 		uint8_t RDP_Level = CBL_STM32F103_GET_RDP_Level();
 
 		/* Report level */
 		Bootloader_Send_Data_To_Host((uint8_t*) (&RDP_Level), 1);
+#else
+	/* If it's slave1 and work with CAN */
+	/*Transmit CAN Read RP level Request*/
+	uint8_t BL_Read_Level[8]; //Length must be 8 or more or undefined behaviour may occur
+    BL_Read_Level[0] = CBL_STM32F103_GET_RDP_Level();
+	CAN_TxHeaderTypeDef BL_RP_TxHeader;
 
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-		BL_PrintMassage("Read Protection level = %x\r\n", RDP_Level);
+	BL_RP_TxHeader.DLC = 1;
+	BL_RP_TxHeader.ExtId = 0;
+	BL_RP_TxHeader.IDE = CAN_ID_STD;
+	BL_RP_TxHeader.RTR = CAN_RTR_DATA;
+	BL_RP_TxHeader.StdId = CAN_READ_RP_RESP_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+	BL_RP_TxHeader.TransmitGlobalTime = DISABLE;
+
+	HAL_CAN_AddTxMessage(&hcan, &BL_RP_TxHeader, BL_Read_Level, BL_TxMailbox);
+	while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
 #endif
 	}
-
 	else if (READ_WP == Host_Buffer[3]) {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Write Protection level = %x\r\n", WDP_Level);
+#endif
+
+#if (ECU_CONFIG == MASTERID) || ( (BL_CAN == DISABLE) && (ECU_CONFIG == SLAVE1) )
 		uint8_t WDP_Level = CBL_STM32F103_GET_WDP_Level();
 
 		/* Report level */
 		Bootloader_Send_Data_To_Host((uint8_t*) (&WDP_Level), 1);
+#else
+		/* If it's slave1 and work with CAN */
+		/*Transmit CAN Read WP level Request*/
+		uint8_t BL_Read_Level[8] = {0}; //Length must be 8 or more or undefined behaviour may occur
+		CAN_TxHeaderTypeDef BL_WP_TxHeader;
 
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-		BL_PrintMassage("Write Protection level = %x\r\n", WDP_Level);
+		BL_WP_TxHeader.DLC = 1;
+		BL_WP_TxHeader.ExtId = 0;
+		BL_WP_TxHeader.IDE = CAN_ID_STD;
+		BL_WP_TxHeader.RTR = CAN_RTR_DATA;
+		BL_WP_TxHeader.StdId = CAN_READ_WP_RESP_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+		BL_WP_TxHeader.TransmitGlobalTime = DISABLE;
+
+		HAL_CAN_AddTxMessage(&hcan, &BL_WP_TxHeader, BL_Read_Level, BL_TxMailbox);
+		while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
 #endif
 	}
 	else {
@@ -724,6 +915,7 @@ static void Bootloader_Read_Protection_Level (uint8_t *Host_Buffer){
 		Bootloader_Send_Data_To_Host((uint8_t*) (&ErrorFrame),1);
 	}
 }
+
 
 
 /*
@@ -760,10 +952,10 @@ static void Bootloader_Enable_R_Protection(uint8_t *Host_Buffer){
 
 	/* If It's master and id is slave */
 	if (SLAVE1 == Host_Buffer[2]){
-#if (ECU_CONFIG == MASTERID)
+#if (BL_CAN == DISABLE) && (ECU_CONFIG == MASTERID)
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[1], Host_Buffer[0], 10); //sending remaining frame, The time must be 10 to avoid errors
-		HAL_UART_Receive(BL_TREE_COMMUNICATION_UART, &ROP_Level_Status, 1 , HAL_MAX_DELAY); //Receive version
+		HAL_UART_Receive(BL_TREE_COMMUNICATION, &ROP_Level_Status, 1 , HAL_MAX_DELAY); //Receive version
 		Bootloader_Send_Data_To_Host((uint8_t*) (&ROP_Level_Status), 1);
 		return ;
 #endif
@@ -841,10 +1033,10 @@ static void Bootloader_Enable_W_Protection(uint8_t *Host_Buffer){
 
 	/* If It's master and id is slave */
 	if (SLAVE1 == Host_Buffer[2]){
-#if (ECU_CONFIG == MASTERID)
+#if (BL_CAN == DISABLE) && (ECU_CONFIG == MASTERID)
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[1], Host_Buffer[0], 10); //sending remaining frame, The time must be 10 to avoid errors
-		HAL_UART_Receive(BL_TREE_COMMUNICATION_UART, &WOP_Level_Status, 1 , HAL_MAX_DELAY); //Receive version
+		HAL_UART_Receive(BL_TREE_COMMUNICATION, &WOP_Level_Status, 1 , HAL_MAX_DELAY); //Receive version
 		Bootloader_Send_Data_To_Host((uint8_t*) (&WOP_Level_Status), 1);
 		return ;
 #endif
@@ -888,9 +1080,6 @@ static void Bootloader_Enable_W_Protection(uint8_t *Host_Buffer){
 		Bootloader_Send_Data_To_Host((uint8_t*) (&ErrorFrame),1);
 	}
 }
-
-
-
 
 
 /* Verify that the address given from host is valid */
@@ -988,10 +1177,6 @@ static uint8_t Perform_Flash_Erase (uint32_t PageAddress, uint8_t Number_Of_Page
 }
 
 
-
-
-
-
 /*
  Your packet is :
    1- 1 byte data length = 0x0A
@@ -1007,22 +1192,27 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Mase erase or page erase of the user flash \r\n");
 #endif
 
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == SLAVE1))
+
+	/*Erase memory from begin address in &Host_Buffer[1] and with amount of pages in Host_Buffer[0]*/
+	Erase_Status = Perform_Flash_Erase (*((uint32_t*)&Host_Buffer[1]), Host_Buffer[0]);
+
+	/*Send Ack Erase status to Master*/
+	CAN_TxHeaderTypeDef BL_Erase_TxHeader;
+
+	BL_Erase_TxHeader.DLC = 1;
+	BL_Erase_TxHeader.ExtId = 0;
+	BL_Erase_TxHeader.IDE = CAN_ID_STD;
+	BL_Erase_TxHeader.RTR = CAN_RTR_DATA;
+	BL_Erase_TxHeader.StdId = CAN_ERASE_MEMORY_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+	BL_Erase_TxHeader.TransmitGlobalTime = DISABLE;
+
+	HAL_CAN_AddTxMessage(&hcan, &BL_Erase_TxHeader, &Erase_Status, BL_TxMailbox);
+	while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+#else
 		/* Perform Mass erase or sector erase of the user flash */
 		if (Host_Buffer[6] == MASTERID )
 		{
-#if(ECU_CONFIG == MASTERID)
-			Erase_Status = Perform_Flash_Erase ( *( (uint32_t*)&Host_Buffer[2] ),Host_Buffer[7]);
-			/* Report the erase state */
-			Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
-
-#elif(ECU_CONFIG == SLAVE1)
-			Erase_Status = UNSUCESSFUL_ERASE ;
-			Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
-#endif
-		}
-		else if(Host_Buffer[6] == SLAVE1 )
-		{
-			/* Send it to Slave node */
 #if(ECU_CONFIG == MASTERID)
 			/*Sending frame to ECU2*/
 			HAL_UART_Transmit(&huart2, &Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
@@ -1035,12 +1225,60 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 			/*Sending Ack to ESP*/
 			Bootloader_Send_Data_To_Host((uint8_t *)&Erase_Status, 1);
 #elif(ECU_CONFIG == SLAVE1)
+			/* Report Error */
+			Erase_Status = UNSUCESSFUL_ERASE ;
+			Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
+#endif
+		}
+		else if(Host_Buffer[6] == SLAVE1 )
+		{
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == MASTERID))
+			/*Create buffer contains Amount of data and start address to be erased
+			 *Length of buffer(when it act as buffer receiver) must be 8 or more, otherwise undefined behaviour may occur as CAN_Receive() will write data in un-allocated stack memory region
+			 * */
+			uint8_t BL_Erase_Memory[8];
+			BL_Erase_Memory[0] = Host_Buffer[7]; //storing page amount to erase
+			*((uint32_t *)(&BL_Erase_Memory[1])) = *((uint32_t*)&Host_Buffer[2]); //storing start address
+
+			/*Transmit Amount of data and Start address needed to be erased through one CAN frame*/
+			CAN_TxHeaderTypeDef BL_EraseMemory_TxHeader; //Create Erase_memory struct Txheader for CAN transmit function
+			BL_EraseMemory_TxHeader.DLC = 5;
+			BL_EraseMemory_TxHeader.ExtId = 0;
+			BL_EraseMemory_TxHeader.IDE = CAN_ID_STD;
+			BL_EraseMemory_TxHeader.RTR = CAN_RTR_DATA;
+			BL_EraseMemory_TxHeader.StdId = CAN_ERASE_MEMORY_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+			BL_EraseMemory_TxHeader.TransmitGlobalTime = DISABLE;
+
+			HAL_CAN_AddTxMessage(&hcan, &BL_EraseMemory_TxHeader, BL_Erase_Memory, BL_TxMailbox);
+			while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+			/*Receiving Ack status from Slave*/
+			CAN_RxHeaderTypeDef BL_EraseMemory_RxHeader; //Create Erase_memory struct Rxheader for receive function
+
+			do
+			{
+				while(HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) == 0); //Polling until there is any message received in FIFO0
+				HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &BL_EraseMemory_RxHeader, BL_Erase_Memory);
+			}while(BL_EraseMemory_RxHeader.StdId != CAN_ERASE_MEMORY_ID); //Neglect other IDs Re-receive if other ID frame is received in FIFO0, until receiving CAN_ERASE_MEMORY_ID frame
+
+			/*Sending Ack status to ESP*/
+			Bootloader_Send_Data_To_Host(BL_Erase_Memory, 1);
+#elif  ((BL_CAN == DISABLE) && (ECU_CONFIG == MASTERID))
+			/*Sending frame to ECU2*/
+			HAL_UART_Transmit(&huart2, &Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
+			HAL_UART_Transmit(&huart2, &Host_Buffer[1], Host_Buffer[0], 5*Host_Buffer[0]); //sending remaining frame, The time must be of about 5 times the length to avoid errors
+
+
+			/*Receiving Ack from ECU2*/
+			HAL_UART_Receive(&huart2, (uint8_t *)&Erase_Status, 1, HAL_MAX_DELAY); //Receive Error status
+
+			/*Sending Ack to ESP*/
+			Bootloader_Send_Data_To_Host((uint8_t *)&Erase_Status, 1);
+#elif ((BL_CAN == DISABLE) && (ECU_CONFIG == SLAVE1))
 			Erase_Status = Perform_Flash_Erase ( *( (uint32_t*)&Host_Buffer[2] ),Host_Buffer[7]);
 			/* Report the erase state */
 			Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
-
 #endif
-
 		}
 		else
 		{
@@ -1048,7 +1286,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 			Bootloader_Send_Data_To_Host((uint8_t *)(&Erase_Status),1);
 		}
 
-
+		/* For debuging */
 		if ( SUCESSFUL_ERASE == Erase_Status){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 			BL_PrintMassage("Sucessful erased\r\n");
@@ -1059,6 +1297,7 @@ static void Bootloader_Erase_Flash (uint8_t *Host_Buffer){
 			BL_PrintMassage("Unsucessful erased\r\n");
 #endif
 		}
+#endif
 }
 
 
@@ -1154,6 +1393,44 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 	BL_PrintMassage ("Write data into memory \r\n");
 #endif
 
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == SLAVE1))
+
+	/* Base address that you will write on */
+	HOST_Address = *((uint32_t *)(&Host_Buffer[1]));;
+
+	/*Receive stream of file data*/
+	CAN_RxHeaderTypeDef BL_WritePrograme_RxHeader;
+	uint8_t Flash_Program_File_Buffer[100];
+	CAN_ReceiveData(&hcan, CAN_RX_FIFO0, &BL_WritePrograme_RxHeader, Flash_Program_File_Buffer, Payload_Len); //Receive from FIFO0 as CAN_FLASH_PROGRAM_ID is mapped to be stored in FIFO0
+
+	/*Create and initialise TxHeader*/
+	CAN_TxHeaderTypeDef BL_WritePrograme_TxHeader;
+	BL_WritePrograme_TxHeader.DLC = 1;
+	BL_WritePrograme_TxHeader.ExtId = 0;
+	BL_WritePrograme_TxHeader.IDE = CAN_ID_STD;
+	BL_WritePrograme_TxHeader.RTR = CAN_RTR_DATA;
+	BL_WritePrograme_TxHeader.StdId = CAN_FLASH_PROGRAM_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+	BL_WritePrograme_TxHeader.TransmitGlobalTime = DISABLE;
+
+
+	Address_Verification = Host_Jump_Address_Verfication(HOST_Address);
+
+	if(Address_Verification == ADDRESS_IS_VALID)
+	{
+		Flash_Payload_Write_Status = Flash_Memory_Write_Payload(Flash_Program_File_Buffer, HOST_Address, Payload_Len);
+
+		/*Send Ack Status to Master*/
+		HAL_CAN_AddTxMessage(&hcan, &BL_WritePrograme_TxHeader, &Flash_Payload_Write_Status, BL_TxMailbox);
+		while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+	}
+	else
+	{
+		/*Send Not Ack to Master due to Address is invalid*/
+		HAL_CAN_AddTxMessage(&hcan, &BL_WritePrograme_TxHeader, &Address_Verification, BL_TxMailbox);
+		while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+	}
+
+#else
 		/* Extract the start address from the Host packet */
 		HOST_Address = *((uint32_t *)(&Host_Buffer[2]));
 		/* Extract the payload length from the Host packet */
@@ -1169,34 +1446,63 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 #if(ECU_CONFIG == MASTERID)
 				/* Write the payload to the Flash memory */
 				Flash_Payload_Write_Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[9], HOST_Address, Payload_Len);
-
 				/* Report payload writing state */
 				Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
-
 #elif(ECU_CONFIG == SLAVE1)
 				Flash_Payload_Write_Status = FLASH_PAYLOAD_WRITING_FAILED;
 				Bootloader_Send_Data_To_Host((uint8_t *)&Address_Verification, 1); //send error frame
 
 #endif
-
 			}
 			else if(Host_Buffer[6] == SLAVE1) {
-#if(ECU_CONFIG == MASTERID)
-				HAL_UART_Transmit(&huart2, &Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
-				HAL_UART_Transmit(&huart2, &Host_Buffer[1], Host_Buffer[0], 5*Host_Buffer[0]); //sending remaining frame, The time must be of about 5 times the length to avoid errors
-				HAL_UART_Receive(&huart2, (uint8_t *)&Flash_Payload_Write_Status, 1, HAL_MAX_DELAY); //Receive Error status
-				Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
+#if((BL_CAN == ENABLE) && (ECU_CONFIG == MASTERID))
+				/*Create buffer contains Amount of data and start address
+				 *Length of buffer(when it act as buffer receiver) must be 8 or more, otherwise undefined behaviour may occur as CAN_Receive() will write data in un-allocated stack memory region
+				 * */
+				uint8_t BL_Write_Programe[8];
+				BL_Write_Programe[0] = Payload_Len;
+				*((uint32_t *)(&BL_Write_Programe[1])) = HOST_Address;
 
-#elif(ECU_CONFIG == SLAVE1)
-				/* Write the payload to the Flash memory */
-				Flash_Payload_Write_Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[9], HOST_Address, Payload_Len);
+				/*Transmit Amount of data and Start address through one CAN frame*/
+				CAN_TxHeaderTypeDef BL_WritePrograme_TxHeader; //Create Write_memory struct Txheader for CAN transmit function
+				BL_WritePrograme_TxHeader.DLC = 5;
+				BL_WritePrograme_TxHeader.ExtId = 0;
+				BL_WritePrograme_TxHeader.IDE = CAN_ID_STD;
+				BL_WritePrograme_TxHeader.RTR = CAN_RTR_DATA;
+				BL_WritePrograme_TxHeader.StdId = CAN_FLASH_PROGRAM_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+				BL_WritePrograme_TxHeader.TransmitGlobalTime = DISABLE;
 
-				/* Report payload writing state */
-				Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
-#endif
+				HAL_CAN_AddTxMessage(&hcan, &BL_WritePrograme_TxHeader, BL_Write_Programe, BL_TxMailbox);
+				while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+				/*Send Stream of data file(We make this function to handle sending large files that are bigger than MAX_DATA_CAN_LENGTH)*/
+				CAN_TransmitData(&hcan, &BL_WritePrograme_TxHeader, (uint8_t *)&Host_Buffer[9], Payload_Len);
+
+				/*Receiving Ack status from Slave*/
+				CAN_RxHeaderTypeDef BL_WritePrograme_RxHeader; //Create Write_memory struct Rxheader for receive function
+
+				do
+				{
+					while(HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) == 0); //Polling until there is any message received
+					HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &BL_WritePrograme_RxHeader, BL_Write_Programe);
+
+				}while(BL_WritePrograme_RxHeader.StdId != CAN_FLASH_PROGRAM_ID);
+
+				/*Sending Ack status to ESP*/
+				Bootloader_Send_Data_To_Host(BL_Write_Programe, 1);
 			}
-			else
-			{
+#elif ((BL_CAN == DISABLE) && (ECU_CONFIG == MASTERID))
+			HAL_UART_Transmit(&huart2, &Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
+			HAL_UART_Transmit(&huart2, &Host_Buffer[1], Host_Buffer[0], 5*Host_Buffer[0]); //sending remaining frame, The time must be of about 5 times the length to avoid errors
+			HAL_UART_Receive(&huart2, (uint8_t *)&Flash_Payload_Write_Status, 1, HAL_MAX_DELAY); //Receive Error status
+			Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
+#elif ((BL_CAN == DISABLE) && (ECU_CONFIG == SLAVE1) )
+			/* Write the payload to the Flash memory */
+			Flash_Payload_Write_Status = Flash_Memory_Write_Payload((uint8_t *)&Host_Buffer[9], HOST_Address, Payload_Len);
+			/* Report payload writing state */
+			Bootloader_Send_Data_To_Host((uint8_t *)&Flash_Payload_Write_Status, 1);
+#endif
+		else{
 				/* Report error frame */
 				Address_Verification = ADDRESS_IS_INVALID;
 				Bootloader_Send_Data_To_Host((uint8_t *)&Address_Verification, 1);
@@ -1209,6 +1515,7 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
 			Address_Verification = ADDRESS_IS_INVALID;
 			Bootloader_Send_Data_To_Host((uint8_t *)&Address_Verification, 1);
 		}
+#endif
 }
 
 
@@ -1221,15 +1528,20 @@ static void Bootloader_Memory_Write (uint8_t *Host_Buffer){
    4,5,6,7- 4 bytes for address
  */
 static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
-	/* Buffering address */
-	uint32_t HOST_Address = RESET ;
-	/* TO check on state of given address is in region or not */
-	uint8_t Address_Verification_State = ADDRESS_IS_INVALID ;
 
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
 	BL_PrintMassage ("Bootloader jump to specified address \r\n");
 #endif
 
+#if (BL_CAN == ENABLE)
+	uint8_t APP = 0 ;
+
+#if  (ECU_CONFIG == MASTERID)
+
+	/* Buffering address */
+	uint32_t HOST_Address = RESET ;
+	/* TO check on state of given address is in region or not */
+	uint8_t Address_Verification_State = ADDRESS_IS_INVALID ;
 
 	/* To get the content of Host_Buffer and variable"Host_Jump_Address" realizes that it is address
 	 - &Host_Buffer[2] --> express the address of array of host
@@ -1238,16 +1550,82 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 	 */
 	HOST_Address = *((uint32_t *)(&Host_Buffer[2]));
 
-	/* If It's master and id is slave */
-	if (SLAVE1 == Host_Buffer[6]){
+	if (HOST_Address == FLASH_PAGE_BASE_ADDRESS_APP1){
+		APP = APPLICATION1 ;
+	}
+	else if (HOST_Address == FLASH_PAGE_BASE_ADDRESS_APP2){
+		APP = APPLICATION2 ;
+	}
 
+	/*Create and initiate buffer to send*/
+	uint8_t BL_JUMP_TO_APP[8]; //Length must be 8 or more or undefined behaviour may occur
+	BL_JUMP_TO_APP[0] = APP;   //Store which App needed to jump to
+
+	/*Transmit which app to jump to through one CAN frame*/
+	CAN_TxHeaderTypeDef BL_Jump_To_App_TxHeader; //Create Jump_To_App struct Txheader for CAN transmit function
+
+	BL_Jump_To_App_TxHeader.DLC = 1;
+	BL_Jump_To_App_TxHeader.ExtId = 0;
+	BL_Jump_To_App_TxHeader.IDE = CAN_ID_STD;
+	BL_Jump_To_App_TxHeader.RTR = CAN_RTR_DATA;
+	BL_Jump_To_App_TxHeader.StdId = CAN_JUMP_TO_APP_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+	BL_Jump_To_App_TxHeader.TransmitGlobalTime = DISABLE;
+
+	HAL_CAN_AddTxMessage(&hcan, &BL_Jump_To_App_TxHeader, BL_JUMP_TO_APP, BL_TxMailbox);
+	while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+#elif (ECU_CONFIG == SLAVE1)
+	 APP = Host_Buffer[0] ;
+	 HAL_FLASH_Unlock();
+	 Perform_Flash_Erase(FLAG_APP1_ADDRESS, 0x01);
+
+	/* To edit the application flag */
+	if (APP == APPLICATION1)
+	{
+		Write_Program_Flag(FLAG_APP1_ADDRESS, FLAG_APP_ON);
+		Write_Program_Flag(FLAG_APP2_ADDRESS, FLAG_APP_OFF);
+		Write_Program_Flag(FLAG_BL_ADDRESS, FLAG_APP_OFF);
+		HAL_NVIC_SystemReset();
+	}
+	else if (APP == APPLICATION2)
+	{
+		Write_Program_Flag(FLAG_APP1_ADDRESS, FLAG_APP_OFF);
+		Write_Program_Flag(FLAG_APP2_ADDRESS, FLAG_APP_ON);
+		Write_Program_Flag(FLAG_BL_ADDRESS, FLAG_APP_OFF);
+		HAL_NVIC_SystemReset();
+	}
+	else
+	{
+		/* Warning to ESP */
+	}
+	HAL_FLASH_Lock();//To disable writing to flash after finishing the function
+#endif
+
+
+#elif (BL_CAN == DISABLE)
+	/* Buffering address */
+	uint32_t HOST_Address = RESET ;
+	/* TO check on state of given address is in region or not */
+	uint8_t Address_Verification_State = ADDRESS_IS_INVALID ;
+
+	/* To get the content of Host_Buffer and variable"Host_Jump_Address" realizes that it is address
+	 - &Host_Buffer[2] --> express the address of array of host
+	 - (uint32_t *)    --> casting it to pointer of uint32
+	 - *               --> De-reference it and get the content of buffer at this element
+	 */
+	HOST_Address = *((uint32_t *)(&Host_Buffer[2]));
+
+	/* If it's master and id is slave */
+	if (SLAVE1 == Host_Buffer[6]){
 #if (ECU_CONFIG == MASTERID)
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[0], 1, 5); //sending length first, The time must be 5 to avoid errors
 		Bootloader_Send_Data_To_Tree(&Host_Buffer[1], Host_Buffer[0], 20); //sending remaining frame, The time must be 10 to avoid errors
 		return ;
 #endif
 	}
-
+	/* It's master and ask about master
+	 * It's slave and ask about slave
+	 *  */
 		/* To verify that the address in the region of memory */
 		Address_Verification_State = Host_Jump_Address_Verfication(HOST_Address);
 
@@ -1256,37 +1634,38 @@ static void Bootloader_Jump_To_Address (uint8_t *Host_Buffer){
 			BL_PrintMassage("Address verification sucessed\r\n");
 #endif
 
-			if (HOST_Address == FLASH_PAGE_BASE_ADDRESS_APP1){
+		if (HOST_Address == FLASH_PAGE_BASE_ADDRESS_APP1){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-				BL_PrintMassage("Jump To Application\r\n");
+			BL_PrintMassage("Jump To Application\r\n");
 #endif
 
-				BL_SetApplication_Flag(HOST_Address);
-				Bootloader_Jump_To_User_App1();
-			}
-			else if (HOST_Address == FLASH_PAGE_BASE_ADDRESS_APP2){
+			BL_SetApplication_Flag(HOST_Address);
+			Bootloader_Jump_To_User_App1();
+		}
+		else if (HOST_Address == FLASH_PAGE_BASE_ADDRESS_APP2){
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-				BL_PrintMassage("Jump To Application\r\n");
+			BL_PrintMassage("Jump To Application\r\n");
 #endif
 
-				BL_SetApplication_Flag(HOST_Address);
-				Bootloader_Jump_To_User_App2();
-			}
-			else {
-#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-				BL_PrintMassage("Jumped to : 0x%X \r\n",Host_Jump_Address);
-#endif
-				/* - Prepare the address to jump
-				    - Increment 1 to be in thumb instruction */
-				Jump_Ptr Jump_Address = (Jump_Ptr) (HOST_Address + 1) ;
-				Jump_Address();
-			}
+			BL_SetApplication_Flag(HOST_Address);
+			Bootloader_Jump_To_User_App2();
 		}
 		else {
 #if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
-			BL_PrintMassage("Address verification unsucessed\r\n");
+			BL_PrintMassage("Jumped to : 0x%X \r\n",Host_Jump_Address);
 #endif
+			/* - Prepare the address to jump
+			    - Increment 1 to be in thumb instruction */
+			Jump_Ptr Jump_Address = (Jump_Ptr) (HOST_Address + 1) ;
+			Jump_Address();
 		}
+	}
+	else {
+#if BL_DEBUG_ENABLE == DEBUG_INFO_ENABLE
+		BL_PrintMassage("Address verification unsucessed\r\n");
+#endif
+	}
+#endif
 }
 
 
@@ -1364,7 +1743,6 @@ static void BL_SetApplication_Flag(uint32_t Host_Jump_Address)
 	}
 }
 
-
 static void BL_Manager(void)
 {
     if(Get_Program_Flag_Status(FLAG_APP1_ADDRESS) == FLAG_RISED)
@@ -1378,7 +1756,6 @@ static void BL_Manager(void)
 		Bootloader_Jump_To_User_App2();
 	}
 }
-
 
 uint32_t Get_Program_Flag_Status(uint32_t Address)
 {
@@ -1406,4 +1783,240 @@ void BL_PrintMassage(char *format, ...) {
 #endif
 	/* Perform cleanup for an ap object initialized by a call to va_start */
 	va_end(args);
+}
+
+
+void MemCopy(uint8_t* Dest_Ptr, uint8_t* Source_Ptr, uint32_t Length)
+{
+	uint32_t i;
+	for(i = 0; i < Length; i++)
+	{
+		Dest_Ptr[i] = Source_Ptr[i];
+	}
+}
+
+
+/*We make this function to handle sending large files that are bigger than MAX_DATA_CAN_LENGTH
+ *You shouldn't send remote frames by this function
+ * */
+void CAN_TransmitData(CAN_HandleTypeDef *hcan, CAN_TxHeaderTypeDef *Header, uint8_t TxData[], uint16_t Length)
+{
+	uint16_t i =0;
+	uint32_t Mailbox = 0;
+
+	while(i < Length)
+	{
+		/*Wait until all messages in mailbox are send*/
+		while(HAL_CAN_IsTxMessagePending(hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+
+		/*Send data as 8 byte packets until remaining data is less than 8*/
+		if(Length - i < MAX_DATA_CAN_LENGTH)
+		{
+			Header->DLC = Length - i;
+			HAL_CAN_AddTxMessage(hcan, Header, &TxData[i], &Mailbox);
+			return;
+		}
+		else
+		{
+			Header->DLC = MAX_DATA_CAN_LENGTH;
+			HAL_CAN_AddTxMessage(hcan, Header, &TxData[i], &Mailbox);
+			i += MAX_DATA_CAN_LENGTH;
+		}
+	}
+
+}
+
+
+/*We make this function to handle Receiving large files that are bigger than MAX_DATA_CAN_LENGTH
+ * To avoid unexpected errors it is a MUST to Pass Buffer[8] or bigger to this function
+ *This function will not receive any remote frame*/
+void CAN_ReceiveData(CAN_HandleTypeDef *hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef *Header, uint8_t RxData[], uint16_t Length)
+{
+	uint16_t i =0;
+	uint8_t RxMessage[8];
+	while(i < Length)
+	{
+		/*Receive single CAN Message*/
+		while(HAL_CAN_GetRxFifoFillLevel(hcan, RxFifo) == 0); //Polling until there is any message received
+
+		/*Get the received message information and data
+		 *You may use HAL_CAN_GetRxMessage(hcan, RxFifo, Header, &RxData[i]) for better performance as there will no need to MemCopy(),
+		 *but this will lead to undefined behaviour as we write to non allocated stack memory i.e: uint8 Rx[8]; Rx[9] = 10;
+		 * */
+		HAL_CAN_GetRxMessage(hcan, RxFifo, Header, RxMessage);
+
+		/*Remote Message should be discarded*/
+		if(Header->RTR == CAN_RTR_REMOTE)
+		{
+			continue;
+		}
+		else
+		{
+			/*Do nothing*/
+		}
+
+		/*Store Data in dedicated buffer*/
+		if((i + Header->DLC) > Length) //This condition to handle when number of data in "RxData[]" is bigger than needed number of data in "Length"
+		{
+			MemCopy(&RxData[i], RxMessage, (Length - i)); //(Length - i) is the remaining part of the File after sending Frames of data size MAX_DATA_CAN_LENGTH from it
+		}
+		else
+		{
+			MemCopy(&RxData[i], RxMessage, Header->DLC);
+		}
+		i += Header->DLC;
+	}
+}
+
+
+void CAN_Read_RP_Level(void)
+{
+	/*Create Variable to send RP level through it*/
+	uint8_t RDP_Level = CBL_STM32F103_GET_RDP_Level();
+
+	/*Create and initialise TxHeader*/
+	CAN_TxHeaderTypeDef BL_RPTxHeader;
+	BL_RPTxHeader.DLC = 1;
+	BL_RPTxHeader.ExtId = 0;
+	BL_RPTxHeader.IDE = CAN_ID_STD;
+	BL_RPTxHeader.RTR = CAN_RTR_DATA;
+	BL_RPTxHeader.StdId = CAN_READ_RP_RESP_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+	BL_RPTxHeader.TransmitGlobalTime = DISABLE;
+
+	/*Send RP level CAN frame*/
+	HAL_CAN_AddTxMessage(&hcan, &BL_RPTxHeader, &RDP_Level, BL_TxMailbox);
+	while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+}
+
+
+
+void CAN_Read_WP_Level(void)
+{
+	/*Create Variable to send RP level through it*/
+	uint8_t	WDP_Level = CBL_STM32F103_GET_WDP_Level();
+
+	/*Create and initialise TxHeader*/
+	CAN_TxHeaderTypeDef BL_WPTxHeader;
+	BL_WPTxHeader.DLC = 1;
+	BL_WPTxHeader.ExtId = 0;
+	BL_WPTxHeader.IDE = CAN_ID_STD;
+	BL_WPTxHeader.RTR = CAN_RTR_DATA;
+	BL_WPTxHeader.StdId = CAN_READ_WP_RESP_ID; //Max value of StdId is 0x7FF(0b11111111111) i.e: 11 bit length.
+	BL_WPTxHeader.TransmitGlobalTime = DISABLE;
+
+	/*Send RP level CAN frame*/
+	HAL_CAN_AddTxMessage(&hcan, &BL_WPTxHeader, &WDP_Level, BL_TxMailbox);
+	while(HAL_CAN_IsTxMessagePending(&hcan, PEND_ON_ALL_TRANSMIT_MAILBOXES)); //In Retransmit mode make this with timer to detect error and avoid infinite loop.
+}
+
+
+
+void CAN_Receive_AllPendingMessages_FIFO0(CAN_HandleTypeDef *hcan, CAN_RxHeaderTypeDef *Header, CAN_Receive_Buffer* RxData)
+{
+	/*Read all the three Read_Mail_boxes in FIFO0*/
+	uint8_t counter = 0;
+	while(hcan->Instance->RF0R & FIFO_RECEIVE_PENDING_MESSAGES_MASK)
+	{
+		if(counter == 0)
+		{
+			HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &BL_RxHeaderReceive, RxData->Rx1_Data);
+		}
+		else if(counter == 1)
+		{
+			HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &BL_RxHeaderReceive, RxData->Rx2_Data);
+		}
+		else if(counter ==2)
+		{
+			HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &BL_RxHeaderReceive, RxData->Rx3_Data);
+		}
+		else
+		{
+			/*Do nothing*/
+		}
+		counter++;
+	}
+}
+
+
+
+void CAN_Receive_AllPendingMessages_FIFO1(CAN_HandleTypeDef *hcan, CAN_RxHeaderTypeDef *Header, CAN_Receive_Buffer* RxData)
+{
+	/*Read all the three Read_Mail_boxes in FIFO0*/
+	uint8_t counter = 0;
+	while(hcan->Instance->RF1R & FIFO_RECEIVE_PENDING_MESSAGES_MASK)
+	{
+		if(counter == 0)
+		{
+			HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &BL_RxHeaderReceive, RxData->Rx1_Data);
+		}
+		else if(counter == 1)
+		{
+			HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &BL_RxHeaderReceive, RxData->Rx2_Data);
+		}
+		else if(counter ==2)
+		{
+			HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &BL_RxHeaderReceive, RxData->Rx3_Data);
+		}
+		else
+		{
+			/*Do nothing*/
+		}
+		counter++;
+	}
+}
+
+
+void CAN_Select_Func(void)
+{
+	/*Select which Bootloader Function to enter*/
+	if(BL_RxHeader.FilterMatchIndex == CAN_MATCH_FILTER_INDEX0) //Entering this condition means received frame is Remote frame
+	{
+		/*Select needed Bootloader Function based on received StandardID of CAN frame*/
+		switch(BL_RxHeader.StdId)
+		{
+		case CAN_VER_REQ_ID:
+			Bootloader_Get_Version(BL_RxData);
+			break;
+
+		case CAN_READ_RP_REQ_ID:
+			CAN_Read_RP_Level();
+			break;
+
+		case CAN_READ_WP_REQ_ID:
+			CAN_Read_WP_Level();
+			break;
+
+		default:
+			break;
+		}
+	}
+	else if(BL_RxHeader.FilterMatchIndex == CAN_MATCH_FILTER_INDEX2) //Entering this condition means received frame is Data frame
+	{
+		/*Select needed Bootloader Function based on received StandardID of CAN frame*/
+		switch(BL_RxHeader.StdId)
+		{
+		case CAN_FLASH_PROGRAM_ID:
+			Bootloader_Memory_Write(BL_RxData);
+			break;
+
+		case CAN_ERASE_MEMORY_ID:
+			Bootloader_Erase_Flash(BL_RxData);
+			break;
+
+		case CAN_JUMP_TO_APP_ID:
+			Bootloader_Jump_To_Address(BL_RxData);
+
+		default:
+			break;
+		}
+	}
+	else
+	{
+		/*Do Nothing*/
+	}
+}
+
+static void Write_Program_Flag(uint32_t Address, uint32_t Value)
+{
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, Address, (uint64_t)Value);
 }
