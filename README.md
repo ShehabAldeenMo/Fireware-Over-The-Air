@@ -49,7 +49,10 @@ ESP get each string from broker and based on it , ESP will form specific frames 
  
 + How Master ECU do communicate with other branchs ? <br />
 using CAN protocal tree to communicate between master ECU and each node in this tree.
+Where the FOTA (Firmware Over-The-Air) project includes several functions for managing large data transmissions and communication between CAN nodes over the CAN (Controller Area Network) protocol. The `CAN_TransmitData` function handles the transmission of large data files by breaking them into smaller packets, ensuring each packet is transmitted before proceeding. The `CAN_ReceiveData` function manages the reception and reassembly of large data files, discarding remote frames to focus on data frames. Both `CAN_Read_RP_Level` and `CAN_Read_WP_Level` functions read the Read Protection (RP) and Write Protection (WP) levels, respectively, and transmit them over the CAN network. Additionally, the `CAN_Receive_AllPendingMessages_FIFO0` and `CAN_Receive_AllPendingMessages_FIFO1` functions read all pending messages from the CAN FIFO0 and FIFO1, storing them in a buffer. The `CAN_Select_Func` function determines the appropriate bootloader function to execute based on the received CAN frame's standard ID and filter match index, calling functions for reading version information, writing memory, erasing memory, or jumping to an application address. These functions ensure robust and reliable firmware updates over the CAN network, with proper error handling and checking mechanisms in place.
  <br />
+
+
  
 + How to handle application on ECU ?  <br />
 At first we send our program by commend from mqtt to ESP called "Write program". <br />
@@ -64,6 +67,7 @@ We will make protection level of our flash memory level 1 in write and read.  <b
 
 + How can uou test this project ? <br />
 You can follow this videos on our channel "yyyyyyyyy".  <br />  <br />
+
 
 ## Main Features
 This features are available for each node or the master. <br /> 
